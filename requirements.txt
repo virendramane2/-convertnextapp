@@ -1,9 +1,8 @@
 streamlit
 PyPDF2
+pymupdf
 Pillow
-google-generativeai
+google-genai
 qrcode
-requests
 yfinance
 rembg
-pycryptodome
