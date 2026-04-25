@@ -173,16 +173,16 @@ if menu == "📄 PDF Pro":
                         st.error(f"Failed to unlock. Ensure the password is correct. Error: {e}")
 
 # --- 2. AI IMAGE LAB ---
-elif menu == "🖼️ AI Image Lab":
-    st.header("Visual Intelligence")
-    img_mode = st.radio("Select Tool", ["AI BG Remover", "QR Generator"], horizontal=True)
-    if img_mode == "AI BG Remover":
-        file = st.file_uploader("Image", type=["jpg", "png", "jpeg"])
+# Move the import FROM the top of the file...
+# ...TO inside the logic like this:
+
+elif menu == "🖼️ Image Lab":
+    if img_tab_index == 0: # BG Remover tab
+        file = st.file_uploader("Upload Image")
         if file and st.button("Remove Background"):
-            with st.spinner("Processing..."):
-                res = remove(file.read())
-                st.image(res)
-                st.download_button("Download PNG", res, "no-bg.png")
+            from rembg import remove  # <--- IMPORT HERE ONLY WHEN NEEDED
+            res = remove(file.read())
+            st.image(res)
     else:
         link = st.text_input("Link/Text", "https://convertnext.in")
         color = st.color_picker("Color", "#6366f1")
