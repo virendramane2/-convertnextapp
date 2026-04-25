@@ -190,7 +190,7 @@ elif menu == "🖼️ Image Lab":
             qr = qrcode.QRCode(box_size=10, border=2)
             qr.add_data(link)
             qr_img = qr.make_image(fill_color=color, back_color="white")
-            st.image(qr_img, width=250)
+            st.image(img, use_container_width=True)
             buf = io.BytesIO()
             qr_img.save(buf)
             st.download_button("Download QR", buf.getvalue(), "qr.png")
