@@ -7,4 +7,5 @@ qrcode
 yfinance
 rembg
 markdown
+rembg[cpu]
 onnxruntime
