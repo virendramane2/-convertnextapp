@@ -6,3 +6,5 @@ google-genai
 qrcode
 yfinance
 rembg
+markdown
+onnxruntime
