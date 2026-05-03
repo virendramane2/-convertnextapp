@@ -860,7 +860,7 @@ elif page == "🎓 Education":
         "🔢 Basic Math", "✖️ Algebra", "📐 Geometry", "📊 Statistics", "🎓 Grades & CGPA", "🔄 Converters"
     ])
     
-   # ==========================================
+  # ==========================================
     # TAB 1: BASIC MATH & CALCULATOR
     # ==========================================
     with edu_tab1:
@@ -871,21 +871,34 @@ elif page == "🎓 Education":
             st.session_state.calc_input = ""
             
         def button_click(val):
+            # If it currently says Error, clear it first before typing
             if st.session_state.calc_input == "Error":
                 st.session_state.calc_input = ""
             st.session_state.calc_input += str(val)
             
         def calculate_result():
+            import math # Imported directly here so it never fails!
             try:
                 # Replace UI symbols with Python math operators
                 expr = st.session_state.calc_input.replace('×', '*').replace('÷', '/')
                 expr = expr.replace('^', '**')
+                
+                # AUTO-FIX: Automatically close missing parentheses
+                open_p = expr.count('(')
+                close_p = expr.count(')')
+                if open_p > close_p:
+                    expr += ')' * (open_p - close_p)
                 
                 # Create a safe execution environment using Python's math module
                 safe_dict = {k: v for k, v in math.__dict__.items() if not k.startswith("__")}
                 safe_dict["__builtins__"] = None
                 
                 result = eval(expr, safe_dict)
+                
+                # Clean up display: remove .0 if it's a clean integer
+                if isinstance(result, float) and result.is_integer():
+                    result = int(result)
+                    
                 st.session_state.calc_input = str(result)
             except Exception:
                 st.session_state.calc_input = "Error"
@@ -893,18 +906,18 @@ elif page == "🎓 Education":
         def clear_calc():
             st.session_state.calc_input = ""
 
-        # Calculator Display Screen
-        st.text_input("Screen", value=st.session_state.calc_input, key="calc_screen", disabled=True, label_visibility="collapsed")
+        # Custom HTML Display Screen (Immune to Streamlit state glitches)
+        display_text = st.session_state.calc_input if st.session_state.calc_input != "" else "0"
+        st.markdown(f"""
+            <div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; border: 2px solid #cbd5e1; text-align: right; font-size: 2.5rem; font-family: monospace; min-height: 90px; margin-bottom: 20px; color: #1e293b; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                {display_text}
+            </div>
+        """, unsafe_allow_html=True)
         
         # Custom CSS to make the calculator buttons look uniform
         st.markdown("""
             <style>
-            div[data-testid="column"] button {
-                width: 100%;
-                font-size: 1.2rem;
-                font-weight: bold;
-                height: 3rem;
-            }
+            div[data-testid="column"] button { width: 100%; font-size: 1.2rem; font-weight: bold; height: 3.5rem; }
             </style>
         """, unsafe_allow_html=True)
         
