@@ -29,3 +29,13 @@ rembg
 pytesseract
 qrcode
 streamlit-cropper
+streamlit
+google-generativeai
+PyMuPDF
+Pillow
+rembg
+pytesseract
+qrcode
+streamlit-cropper
+streamlit-drawable-canvas
+numpy
