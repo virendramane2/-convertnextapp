@@ -769,8 +769,85 @@ elif page == "✒️ Signature":
                 )
 
 elif page == "⚖️ Units":
-    st.header("⚖️ Unit Converter")
-    st.info("Coming soon: Unit conversion dictionary logic.")
+    st.header("⚖️ Universal Unit Converter")
+    
+    # 1. The Massive Unit Dictionary (Values relative to a base unit)
+    unit_data = {
+        "Length": {"Meter": 1, "Kilometer": 1000, "Centimeter": 0.01, "Millimeter": 0.001, "Micrometer": 1e-6, "Nanometer": 1e-9, "Inch": 0.0254, "Foot": 0.3048, "Yard": 0.9144, "Mile": 1609.34, "Nautical Mile": 1852},
+        "Weight": {"Kilogram": 1, "Gram": 0.001, "Milligram": 1e-6, "Metric Ton": 1000, "Pound": 0.453592, "Ounce": 0.0283495},
+        "Area": {"Square Meter": 1, "Square Kilometer": 1e6, "Square Centimeter": 0.0001, "Hectare": 10000, "Acre": 4046.86, "Square Mile": 2.59e6, "Square Foot": 0.092903, "Square Inch": 0.00064516},
+        "Volume": {"Liter": 1, "Milliliter": 0.001, "Cubic Meter": 1000, "Gallon (US)": 3.78541, "Quart (US)": 0.946353, "Pint (US)": 0.473176, "Cup": 0.236588},
+        "Time": {"Second": 1, "Millisecond": 0.001, "Minute": 60, "Hour": 3600, "Day": 86400, "Week": 604800, "Month (Avg)": 2.628e6, "Year": 3.154e7},
+        "Speed": {"Meters per second": 1, "Kilometers per hour": 0.277778, "Miles per hour": 0.44704, "Knot": 0.514444, "Foot per second": 0.3048},
+        "Pressure": {"Pascal": 1, "Kilopascal": 1000, "Bar": 100000, "PSI": 6894.76, "Atmosphere": 101325, "Torr": 133.322},
+        "Power": {"Watt": 1, "Kilowatt": 1000, "Megawatt": 1e6, "Horsepower": 745.7},
+        "Energy": {"Joule": 1, "Kilojoule": 1000, "Calorie": 4.184, "Kilocalorie": 4184, "Watt-hour": 3600, "Kilowatt-hour": 3.6e6, "BTU": 1055.06},
+        "Voltage": {"Volt": 1, "Millivolt": 0.001, "Kilovolt": 1000},
+        "Current": {"Ampere": 1, "Milliampere": 0.001, "Kiloampere": 1000},
+        "Force": {"Newton": 1, "Kilonewton": 1000, "Dyne": 1e-5, "Pound-force": 4.44822},
+        "Torque": {"Newton-meter": 1, "Pound-foot": 1.35582},
+        "Data Storage": {"Byte": 1, "Kilobyte": 1024, "Megabyte": 1048576, "Gigabyte": 1073741824, "Terabyte": 1099511627776, "Bit": 0.125},
+        "Frequency": {"Hertz": 1, "Kilohertz": 1000, "Megahertz": 1e6, "Gigahertz": 1e9},
+        "Angle": {"Degree": 1, "Radian": 57.2958, "Gradian": 0.9},
+        "Density": {"Kg per cubic meter": 1, "Gram per cubic cm": 1000, "Pound per cubic foot": 16.0185},
+        "Temperature": ["Celsius", "Fahrenheit", "Kelvin"] # Temperature requires custom math, not multipliers
+    }
+
+    # 2. UI Layout
+    st.markdown("### Select Conversion Type")
+    category = st.selectbox("Category", list(unit_data.keys()), label_visibility="collapsed")
+    
+    st.divider()
+    
+    # Dynamically load the correct units based on the chosen category
+    if category == "Temperature":
+        available_units = unit_data["Temperature"]
+    else:
+        available_units = list(unit_data[category].keys())
+
+    col1, col2 = st.columns(2)
+    with col1:
+        val = st.number_input("Enter Value", value=1.0, step=0.1)
+        from_unit = st.selectbox("From Unit", available_units, key="from_unit")
+        
+    with col2:
+        # Empty space to align the button and selectbox nicely
+        st.write("") 
+        st.write("")
+        to_unit = st.selectbox("To Unit", available_units, key="to_unit", index=1 if len(available_units) > 1 else 0)
+
+    # 3. Calculation Logic
+    if st.button("🔄 Convert", type="primary", use_container_width=True):
+        if category == "Temperature":
+            # Custom logic for temperature conversions
+            if from_unit == to_unit:
+                result = val
+            elif from_unit == "Celsius" and to_unit == "Fahrenheit":
+                result = (val * 9/5) + 32
+            elif from_unit == "Celsius" and to_unit == "Kelvin":
+                result = val + 273.15
+            elif from_unit == "Fahrenheit" and to_unit == "Celsius":
+                result = (val - 32) * 5/9
+            elif from_unit == "Fahrenheit" and to_unit == "Kelvin":
+                result = (val - 32) * 5/9 + 273.15
+            elif from_unit == "Kelvin" and to_unit == "Celsius":
+                result = val - 273.15
+            elif from_unit == "Kelvin" and to_unit == "Fahrenheit":
+                result = (val - 273.15) * 9/5 + 32
+                
+            st.success(f"### {val:,.2f} {from_unit} = {result:,.2f} {to_unit}")
+            
+        else:
+            # Standard multiplier logic for all other units
+            # Convert the input to the base unit, then divide by the target unit's base value
+            base_value = val * unit_data[category][from_unit]
+            result = base_value / unit_data[category][to_unit]
+            
+            # Use smart formatting to avoid ugly scientific notation on normal numbers
+            if result < 0.0001 or result > 1000000:
+                st.success(f"### {val:,.4f} {from_unit} = {result:.4e} {to_unit}")
+            else:
+                st.success(f"### {val:,.4f} {from_unit} = {result:,.4f} {to_unit}")
 
 elif page == "🎓 Education":
     st.header("🎓 Education & Math Tools")
