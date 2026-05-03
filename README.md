@@ -131,35 +131,3 @@ This suite is divided into 8 powerhouse modules:
    ```bash
    git clone [https://github.com/yourusername/convertnext.git](https://github.com/yourusername/convertnext.git)
    cd convertnext
-Install Python dependencies:
-
-Bash
-pip install -r requirements.txt
-Install System Dependencies (For OCR and Web-to-PDF):
-
-Install Tesseract OCR
-
-Install wkhtmltopdf
-
-Run the Application:
-
-Bash
-streamlit run app.py
-API Keys:
-To use the AI Summarization and Image Vision features, you will need a Google Gemini API Key. The app provides a secure sidebar input to enter your key at runtime.
-
-☁️ Deployment (Streamlit Community Cloud)
-If deploying to Streamlit Community Cloud, ensure you include both the requirements.txt and a packages.txt file in your root directory.
-
-packages.txt must contain:
-
-Plaintext
-tesseract-ocr
-wkhtmltopdf
-👨‍💻 Author
-Built with ♥ by Virendra Mane
-
-If you find this project helpful, please consider giving it a ⭐ on GitHub!
-
-
-To add this to your repository, just click "Add file" -> "Create new file" on your GitHub repo page, name it `RE
