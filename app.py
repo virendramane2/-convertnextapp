@@ -259,12 +259,15 @@ elif page == "💰 Finance":
     with fin_tab4:
         st.subheader("💱 Live Currency Converter")
         try:
-            # Fetch live currency list from Frankfurter API
-            req = urllib.request.urlopen('https://api.frankfurter.app/currencies')
-            currencies = json.loads(req.read())
+            # Using 'requests' with a timeout and a browser-like User-Agent to prevent getting blocked
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get('https://api.frankfurter.app/currencies', headers=headers, timeout=5)
+            response.raise_for_status() # This checks if the API is down
+            
+            currencies = response.json()
             curr_list = list(currencies.keys())
             
-            # Default to USD -> INR if they exist in the list
+            # Default to USD -> INR if they exist
             default_from = curr_list.index("USD") if "USD" in curr_list else 0
             default_to = curr_list.index("INR") if "INR" in curr_list else 0
 
@@ -281,13 +284,24 @@ elif page == "💰 Finance":
                     st.success(f"**{cur_amt} {cur_from}** = **{cur_amt} {cur_to}**")
                 elif cur_amt > 0:
                     with st.spinner("Fetching live rates..."):
-                        conv_req = urllib.request.urlopen(f"https://api.frankfurter.app/latest?amount={cur_amt}&from={cur_from}&to={cur_to}")
-                        conv_data = json.loads(conv_req.read())
+                        conv_res = requests.get(
+                            f"https://api.frankfurter.app/latest?amount={cur_amt}&from={cur_from}&to={cur_to}", 
+                            headers=headers, 
+                            timeout=5
+                        )
+                        conv_res.raise_for_status()
+                        conv_data = conv_res.json()
                         converted_amt = conv_data['rates'][cur_to]
                         
                         st.success(f"**{cur_amt:,.2f} {cur_from}** = **{converted_amt:,.2f} {cur_to}**")
                 else:
                     st.warning("Please enter an amount greater than zero.")
+
+        except requests.exceptions.RequestException as e:
+            # This will now print the EXACT reason it failed (Timeout, SSL Error, etc.)
+            st.error(f"Network Error: Could not connect to the currency API. Details: {e}")
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {e}")
 
         except Exception as e:
             st.error("Could not fetch live exchange rates. Please check your internet connection or try again later.")
