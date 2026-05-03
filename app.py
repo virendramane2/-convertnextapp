@@ -42,18 +42,106 @@ menu = st.sidebar.selectbox("Main Tool Category",
 api_key = st.sidebar.text_input("Gemini API Key", type="password", placeholder="Enter key for AI tools")
 
 # --- 1. PDF PRO ---
-if menu == "📄 PDF Pro":
-    st.header("Comprehensive PDF Toolset")
-    tab1, tab2, tab3 = st.tabs(["Merge & Split", "Images to PDF", "Security & OCR"])
+elif page == "📄 PDF":
+    st.header("📄 PDF Management")
     
-    with tab1:
-        st.subheader("Merge PDF Files Online")
-        files = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True)
-        if files and st.button("Combine Now"):
-            merger = PdfMerger()
-            for f in files: merger.append(io.BytesIO(f.read()))
-            out = io.BytesIO(); merger.write(out)
-            st.download_button("Download Merged PDF", out.getvalue(), "merged.pdf")
+    pdf_tab1, pdf_tab2, pdf_tab3, pdf_tab4 = st.tabs(["Merge & Split", "Text Extraction", "Images to PDF", "PDF to Images"])
+    
+    # --- 1. MERGE & SPLIT ---
+    with pdf_tab1:
+        st.subheader("Merge PDFs")
+        uploaded_pdfs = st.file_uploader("Upload 2 or more PDFs to merge", type="pdf", accept_multiple_files=True, key="merge_up")
+        
+        if st.button("Merge Files", type="primary") and uploaded_pdfs:
+            if len(uploaded_pdfs) < 2:
+                st.warning("Please upload at least 2 PDFs to merge.")
+            else:
+                merged_pdf = fitz.open()
+                for pdf_file in uploaded_pdfs:
+                    # Open each uploaded file from memory
+                    pdf_doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+                    merged_pdf.insert_pdf(pdf_doc)
+                
+                # Save to bytes for downloading
+                pdf_bytes = merged_pdf.write()
+                st.success("PDFs merged successfully!")
+                st.download_button("Download Merged PDF", data=pdf_bytes, file_name="merged_convertnext.pdf", mime="application/pdf")
+
+        st.divider()
+        
+        st.subheader("Split PDF")
+        split_pdf = st.file_uploader("Upload 1 PDF to split into individual pages", type="pdf", key="split_up")
+        if st.button("Split PDF") and split_pdf:
+            doc = fitz.open(stream=split_pdf.read(), filetype="pdf")
+            for page_num in range(len(doc)):
+                new_doc = fitz.open()
+                new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                st.download_button(
+                    f"Download Page {page_num + 1}", 
+                    data=new_doc.write(), 
+                    file_name=f"page_{page_num + 1}.pdf", 
+                    mime="application/pdf",
+                    key=f"dl_page_{page_num}"
+                )
+
+    # --- 2. TEXT EXTRACTION & AI ---
+    with pdf_tab2:
+        st.subheader("Extract Text from PDF")
+        extract_pdf = st.file_uploader("Upload PDF for text extraction", type="pdf", key="ext_up")
+        
+        if extract_pdf:
+            doc = fitz.open(stream=extract_pdf.read(), filetype="pdf")
+            extracted_text = ""
+            for page in doc:
+                extracted_text += page.get_text() + "\n\n"
+                
+            st.text_area("Extracted Text:", value=extracted_text, height=300)
+            
+            if api_key and st.button("✨ Analyze with AI", type="primary"):
+                with st.spinner("Analyzing document..."):
+                    model = genai.GenerativeModel('gemini-2.5-flash')
+                    response = model.generate_content(f"Analyze this document and provide a detailed summary and key takeaways: {extracted_text[:10000]}") # Limiting text to prevent token overflow
+                    st.markdown("### AI Analysis")
+                    st.write(response.text)
+
+    # --- 3. IMAGES TO PDF ---
+    with pdf_tab3:
+        st.subheader("Convert Images to a single PDF")
+        img_files = st.file_uploader("Select Images (JPG, PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="img_to_pdf")
+        
+        if st.button("Generate PDF") and img_files:
+            images = []
+            for img_file in img_files:
+                img = Image.open(img_file).convert("RGB")
+                images.append(img)
+                
+            if images:
+                pdf_bytes = io.BytesIO()
+                # Save first image, append the rest
+                images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=images[1:])
+                st.success("PDF generated from images!")
+                st.download_button("Download Image PDF", data=pdf_bytes.getvalue(), file_name="images_convertnext.pdf", mime="application/pdf")
+
+    # --- 4. PDF TO IMAGES ---
+    with pdf_tab4:
+        st.subheader("Render PDF Pages as Images")
+        pdf_to_render = st.file_uploader("Upload PDF", type="pdf", key="pdf_to_img")
+        scale = st.slider("Quality Scale (Higher = Better quality, larger file)", min_value=1.0, max_value=4.0, value=2.0, step=0.5)
+        
+        if st.button("Convert to Images") and pdf_to_render:
+            doc = fitz.open(stream=pdf_to_render.read(), filetype="pdf")
+            # Create a zoom matrix for higher quality rendering
+            mat = fitz.Matrix(scale, scale) 
+            
+            img_cols = st.columns(3) # Display images in a grid
+            
+            for i, page in enumerate(doc):
+                pix = page.get_pixmap(matrix=mat)
+                img_data = pix.tobytes("png")
+                
+                with img_cols[i % 3]:
+                    st.image(img_data, caption=f"Page {i+1}", use_container_width=True)
+                    st.download_button(f"⬇️ Page {i+1}", data=img_data, file_name=f"page_{i+1}.png", mime="image/png", key=f"dl_img_{i}")
 
 # --- 2. IMAGE LAB (COMPREHENSIVE) ---
 elif menu == "🖼️ Image Lab":
