@@ -1,3 +1,15 @@
+from PIL import ImageDraw, ImageFont, ImageEnhance, ExifTags
+import qrcode
+import pytesseract
+import io
+try:
+    from rembg import remove
+except ImportError:
+    remove = None
+try:
+    from streamlit_cropper import st_cropper
+except ImportError:
+    st_cropper = None
 import streamlit as st
 import hashlib
 import uuid
@@ -312,7 +324,234 @@ elif page == "📄 PDF":
 
 elif page == "🖼️ Image":
     st.header("🖼️ Image Studio")
-    st.info("Coming soon: Image tools via Pillow and Tesseract.")
+    
+    img_tab1, img_tab2, img_tab3, img_tab4 = st.tabs(["✂️ Edit & Compress", "✨ AI & Enhance", "🔄 Convert & Collage", "📝 Text & Generators"])
+    
+    # --- TAB 1: EDIT & COMPRESS ---
+    with img_tab1:
+        st.subheader("✂️ Crop & Rotate")
+        crop_file = st.file_uploader("Upload Image to Crop", type=["jpg", "png", "jpeg"], key="crop_up")
+        if crop_file and st_cropper:
+            img = Image.open(crop_file)
+            st.write("Drag the box to crop:")
+            cropped_img = st_cropper(img, realtime_update=True, box_color='#8b5cf6')
+            
+            r_col1, r_col2 = st.columns(2)
+            with r_col1:
+                if st.button("Rotate 90° Left"): cropped_img = cropped_img.rotate(90, expand=True)
+            with r_col2:
+                if st.button("Rotate 90° Right"): cropped_img = cropped_img.rotate(-90, expand=True)
+                
+            st.image(cropped_img, caption="Preview")
+            buf = io.BytesIO()
+            cropped_img.save(buf, format="PNG")
+            st.download_button("Download Cropped Image", data=buf.getvalue(), file_name="cropped.png", mime="image/png")
+
+        st.divider()
+        st.subheader("Advanced Photo Resizer")
+        resize_file = st.file_uploader("Upload Image to Resize", type=["jpg", "png", "jpeg"], key="resize_up")
+        if resize_file:
+            img = Image.open(resize_file)
+            st.write(f"Original Size: {img.width}x{img.height} px")
+            rs_col1, rs_col2 = st.columns(2)
+            new_w = rs_col1.number_input("New Width (px)", value=img.width)
+            new_h = rs_col2.number_input("New Height (px)", value=img.height)
+            if st.button("Resize Image"):
+                resized = img.resize((int(new_w), int(new_h)))
+                buf = io.BytesIO()
+                resized.save(buf, format="PNG")
+                st.success(f"Resized to {int(new_w)}x{int(new_h)}!")
+                st.download_button("Download Resized", data=buf.getvalue(), file_name="resized.png", mime="image/png")
+
+        st.divider()
+        st.subheader("Reduce Size (KB/MB)")
+        compress_file = st.file_uploader("Upload Image to Compress", type=["jpg", "jpeg", "png"], key="comp_up")
+        if compress_file:
+            target_kb = st.number_input("Target Size (KB)", min_value=10, value=200)
+            if st.button("Compress Image"):
+                img = Image.open(compress_file).convert("RGB")
+                quality = 95
+                buf = io.BytesIO()
+                while quality > 10:
+                    buf.seek(0)
+                    img.save(buf, format="JPEG", quality=quality)
+                    if buf.tell() / 1024 <= target_kb:
+                        break
+                    quality -= 5
+                st.success(f"Compressed to ~{int(buf.tell() / 1024)} KB")
+                st.download_button("Download Compressed", data=buf.getvalue(), file_name="compressed.jpg", mime="image/jpeg")
+
+        st.divider()
+        st.subheader("🛂 Passport Photo Maker")
+        pass_file = st.file_uploader("Upload Photo", type=["jpg", "png", "jpeg"], key="pass_up")
+        if pass_file:
+            if st.button("Generate Passport Photo (35x45mm ratio)"):
+                img = Image.open(pass_file)
+                # Standard aspect ratio for passport is usually 3.5 x 4.5
+                target_ratio = 3.5 / 4.5
+                current_ratio = img.width / img.height
+                if current_ratio > target_ratio:
+                    new_w = int(target_ratio * img.height)
+                    left = (img.width - new_w) / 2
+                    img = img.crop((left, 0, left + new_w, img.height))
+                else:
+                    new_h = int(img.width / target_ratio)
+                    top = (img.height - new_h) / 2
+                    img = img.crop((0, top, img.width, top + new_h))
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", dpi=(300, 300))
+                st.image(img, width=200)
+                st.download_button("Download Passport Photo", data=buf.getvalue(), file_name="passport.jpg", mime="image/jpeg")
+
+    # --- TAB 2: AI & ENHANCE ---
+    with img_tab2:
+        st.subheader("🎨 AI Background Removal")
+        bg_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"], key="bg_up")
+        if bg_file:
+            if not remove:
+                st.error("rembg library not installed. Add it to requirements.txt")
+            elif st.button("✨ Remove Background", type="primary"):
+                with st.spinner("AI is processing the image..."):
+                    img_bytes = bg_file.read()
+                    result_bytes = remove(img_bytes)
+                    st.image(result_bytes, caption="Background Removed")
+                    st.download_button("Download PNG", data=result_bytes, file_name="nobg.png", mime="image/png")
+        
+        st.divider()
+        st.subheader("✨ Photo Enhancer")
+        enh_file = st.file_uploader("Upload Image to Enhance", type=["jpg", "png", "jpeg"], key="enh_up")
+        if enh_file:
+            img = Image.open(enh_file)
+            e_col1, e_col2, e_col3, e_col4 = st.columns(4)
+            c = e_col1.slider("Contrast", 0.5, 2.0, 1.0)
+            b = e_col2.slider("Brightness", 0.5, 2.0, 1.0)
+            s = e_col3.slider("Sharpness", 0.0, 3.0, 1.0)
+            col = e_col4.slider("Color", 0.0, 2.0, 1.0)
+            
+            img = ImageEnhance.Contrast(img).enhance(c)
+            img = ImageEnhance.Brightness(img).enhance(b)
+            img = ImageEnhance.Sharpness(img).enhance(s)
+            img = ImageEnhance.Color(img).enhance(col)
+            
+            st.image(img)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            st.download_button("Download Enhanced", data=buf.getvalue(), file_name="enhanced.png", mime="image/png")
+
+        st.divider()
+        st.subheader("ℹ️ EXIF Metadata Viewer")
+        exif_file = st.file_uploader("Upload JPG to read Metadata", type=["jpg", "jpeg"], key="exif_up")
+        if exif_file:
+            img = Image.open(exif_file)
+            exif_data = img._getexif()
+            if exif_data:
+                exif_dict = {ExifTags.TAGS.get(k, k): str(v) for k, v in exif_data.items() if k in ExifTags.TAGS}
+                st.json(exif_dict)
+            else:
+                st.info("No EXIF data found in this image.")
+
+    # --- TAB 3: CONVERT & COLLAGE ---
+    with img_tab3:
+        st.subheader("🔄 Image Format & DPI Converter")
+        conv_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg", "webp", "bmp"], key="conv_up")
+        if conv_file:
+            c1, c2 = st.columns(2)
+            out_format = c1.selectbox("Output Format", ["PNG", "JPEG", "WEBP", "BMP"])
+            dpi_val = c2.number_input("Target DPI", value=300)
+            
+            if st.button("Convert Image"):
+                img = Image.open(conv_file)
+                if out_format == "JPEG" and img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format=out_format, dpi=(dpi_val, dpi_val))
+                st.success("Conversion Complete!")
+                st.download_button(f"Download {out_format}", data=buf.getvalue(), file_name=f"converted.{out_format.lower()}", mime=f"image/{out_format.lower()}")
+
+        st.divider()
+        st.subheader("🖼️ Image Collage (Grid)")
+        col_files = st.file_uploader("Select 2 to 4 Images", type=["jpg", "png", "jpeg"], accept_multiple_files=True, key="col_up")
+        if st.button("Create Collage") and col_files:
+            if len(col_files) < 2 or len(col_files) > 4:
+                st.warning("Please select exactly 2, 3, or 4 images.")
+            else:
+                imgs = [Image.open(f).convert("RGB").resize((600, 600)) for f in col_files]
+                collage = Image.new("RGB", (1200, 1200), "white")
+                if len(imgs) == 2:
+                    collage.paste(imgs[0], (0, 300))
+                    collage.paste(imgs[1], (600, 300))
+                elif len(imgs) == 3:
+                    collage.paste(imgs[0], (0, 0))
+                    collage.paste(imgs[1], (600, 0))
+                    collage.paste(imgs[2], (300, 600))
+                else:
+                    collage.paste(imgs[0], (0, 0))
+                    collage.paste(imgs[1], (600, 0))
+                    collage.paste(imgs[2], (0, 600))
+                    collage.paste(imgs[3], (600, 600))
+                
+                st.image(collage, use_container_width=True)
+                buf = io.BytesIO()
+                collage.save(buf, format="JPEG")
+                st.download_button("Download Collage", data=buf.getvalue(), file_name="collage.jpg", mime="image/jpeg")
+
+    # --- TAB 4: TEXT & GENERATORS ---
+    with img_tab4:
+        st.subheader("📅 Add Name & DOB")
+        nd_file = st.file_uploader("Upload Photo", type=["jpg", "png", "jpeg"], key="nd_up")
+        nd_name = st.text_input("Name")
+        nd_dob = st.text_input("Date of Birth")
+        if st.button("Generate Photo") and nd_file and nd_name:
+            img = Image.open(nd_file)
+            new_img = Image.new("RGB", (img.width, img.height + 150), "white")
+            new_img.paste(img, (0, 0))
+            draw = ImageDraw.Draw(new_img)
+            # Use default font, scaled up roughly
+            draw.text((img.width/2, img.height + 30), nd_name, fill="black", anchor="mm", font=ImageFont.load_default(size=40))
+            draw.text((img.width/2, img.height + 90), f"DOB: {nd_dob}", fill="black", anchor="mm", font=ImageFont.load_default(size=30))
+            
+            st.image(new_img, width=300)
+            buf = io.BytesIO()
+            new_img.save(buf, format="JPEG")
+            st.download_button("Download Photo", data=buf.getvalue(), file_name="namedob.jpg", mime="image/jpeg")
+
+        st.divider()
+        st.subheader("🐸 Meme Generator")
+        meme_file = st.file_uploader("Upload Base Image", type=["jpg", "png", "jpeg"], key="meme_up")
+        m_top = st.text_input("Top Text").upper()
+        m_bot = st.text_input("Bottom Text").upper()
+        if st.button("Make Meme") and meme_file:
+            img = Image.open(meme_file)
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.load_default(size=int(img.width * 0.08))
+            draw.text((img.width/2, 20), m_top, fill="white", stroke_width=2, stroke_fill="black", anchor="ma", font=font)
+            draw.text((img.width/2, img.height - 20), m_bot, fill="white", stroke_width=2, stroke_fill="black", anchor="md", font=font)
+            st.image(img)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            st.download_button("Download Meme", data=buf.getvalue(), file_name="meme.png", mime="image/png")
+
+        st.divider()
+        st.subheader("QR Code Maker")
+        qr_text = st.text_input("Enter URL or Text for QR Code")
+        if st.button("Generate QR"):
+            qr_img = qrcode.make(qr_text)
+            buf = io.BytesIO()
+            qr_img.save(buf, format="PNG")
+            st.image(qr_img, width=200)
+            st.download_button("Download QR", data=buf.getvalue(), file_name="qr.png", mime="image/png")
+
+        st.divider()
+        st.subheader("📝 OCR (Image to Text)")
+        ocr_file = st.file_uploader("Upload Image with Text", type=["jpg", "png", "jpeg"], key="ocr_up")
+        if st.button("Extract Text") and ocr_file:
+            with st.spinner("Extracting text..."):
+                try:
+                    img = Image.open(ocr_file)
+                    extracted = pytesseract.image_to_string(img)
+                    st.text_area("Extracted Text:", value=extracted, height=200)
+                except Exception as e:
+                    st.error("Tesseract-OCR is not installed on the system. Please ensure the Tesseract binary is installed on your server.")
 
 elif page == "✒️ Signature":
     st.header("✒️ Signature Pad")
