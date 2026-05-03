@@ -1,3 +1,22 @@
+import streamlit as st
+import hashlib
+import uuid
+import base64
+import json
+import google.generativeai as genai
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ExifTags
+import io
+import qrcode
+import numpy as np
+import requests  # <--- Add this line right here!
+
+# Safe imports for external heavy libraries
+try:
+    from rembg import remove
+except ImportError:
+    remove = None
+
+# ... (the rest of your try-except imports stay the same)
 import numpy as np
 
 try:
