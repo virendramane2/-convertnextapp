@@ -330,97 +330,197 @@ elif page == "💰 Finance":
             st.error("Could not fetch live exchange rates. Please check your internet connection or try again later.")
 
 elif page == "📄 PDF":
-    st.header("📄 PDF Management")
+    st.header("📄 Ultimate PDF Suite")
     
-    pdf_tab1, pdf_tab2, pdf_tab3, pdf_tab4 = st.tabs(["Merge & Split", "Text Extraction", "Images to PDF", "PDF to Images"])
+    # The massive list of 24 tools!
+    pdf_tools = [
+        "Merge PDF", "Split PDF", "Compress PDF (Target Size)", "Edit PDF", "Sign PDF", 
+        "PDF Convert", "Images to PDF", "PDF to Images", "Extract PDF images", 
+        "Protect PDF", "Unlock PDF", "Rotate PDF pages", "Remove PDF pages", 
+        "Extract PDF pages", "Rearrange PDF pages", "Webpage to PDF", "PDF OCR", 
+        "Add watermark", "Add page numbers", "PDF Overlay", "Compare PDFs", 
+        "Web optimize PDF", "Redact PDF", "Create PDF"
+    ]
     
-    with pdf_tab1:
-        st.subheader("Merge PDFs")
-        uploaded_pdfs = st.file_uploader("Upload 2 or more PDFs to merge", type="pdf", accept_multiple_files=True, key="merge_up")
-        
+    # Clean UI Dropdown
+    selected_tool = st.selectbox("Select PDF Tool", pdf_tools)
+    st.divider()
+    
+    # ==========================================
+    # COMBINE & SPLIT
+    # ==========================================
+    if selected_tool == "Merge PDF":
+        st.subheader("Merge Multiple PDFs")
+        uploaded_pdfs = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True)
         if st.button("Merge Files", type="primary") and uploaded_pdfs:
             if len(uploaded_pdfs) < 2:
-                st.warning("Please upload at least 2 PDFs to merge.")
+                st.warning("Please upload at least 2 PDFs.")
             else:
                 merged_pdf = fitz.open()
                 for pdf_file in uploaded_pdfs:
                     pdf_doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
                     merged_pdf.insert_pdf(pdf_doc)
-                
-                pdf_bytes = merged_pdf.write()
-                st.success("PDFs merged successfully!")
-                st.download_button("Download Merged PDF", data=pdf_bytes, file_name="merged_convertnext.pdf", mime="application/pdf")
+                st.download_button("Download Merged PDF", data=merged_pdf.write(), file_name="merged.pdf", mime="application/pdf")
 
-        st.divider()
-        
-        st.subheader("Split PDF")
-        split_pdf = st.file_uploader("Upload 1 PDF to split into individual pages", type="pdf", key="split_up")
-        if st.button("Split PDF") and split_pdf:
+    elif selected_tool == "Split PDF":
+        st.subheader("Split PDF into Pages")
+        split_pdf = st.file_uploader("Upload PDF", type="pdf")
+        if st.button("Split") and split_pdf:
             doc = fitz.open(stream=split_pdf.read(), filetype="pdf")
             for page_num in range(len(doc)):
                 new_doc = fitz.open()
                 new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
-                st.download_button(
-                    f"Download Page {page_num + 1}", 
-                    data=new_doc.write(), 
-                    file_name=f"page_{page_num + 1}.pdf", 
-                    mime="application/pdf",
-                    key=f"dl_page_{page_num}"
-                )
+                st.download_button(f"⬇️ Download Page {page_num + 1}", data=new_doc.write(), file_name=f"page_{page_num + 1}.pdf", mime="application/pdf", key=f"split_{page_num}")
 
-    with pdf_tab2:
-        st.subheader("Extract Text from PDF")
-        extract_pdf = st.file_uploader("Upload PDF for text extraction", type="pdf", key="ext_up")
-        
-        if extract_pdf:
-            doc = fitz.open(stream=extract_pdf.read(), filetype="pdf")
-            extracted_text = ""
+    # ==========================================
+    # ORGANIZE PAGES
+    # ==========================================
+    elif selected_tool == "Rotate PDF pages":
+        st.subheader("Rotate Pages")
+        rot_pdf = st.file_uploader("Upload PDF", type="pdf")
+        angle = st.selectbox("Rotation Angle", [90, 180, 270])
+        if st.button("Rotate All Pages") and rot_pdf:
+            doc = fitz.open(stream=rot_pdf.read(), filetype="pdf")
             for page in doc:
-                extracted_text += page.get_text() + "\n\n"
-                
-            st.text_area("Extracted Text:", value=extracted_text, height=300)
-            
-            if api_key and st.button("✨ Analyze with AI", type="primary"):
-                with st.spinner("Analyzing document..."):
-                    model = genai.GenerativeModel('gemini-2.5-flash')
-                    response = model.generate_content(f"Analyze this document and provide a detailed summary and key takeaways: {extracted_text[:10000]}")
-                    st.markdown("### AI Analysis")
-                    st.write(response.text)
+                page.set_rotation(angle)
+            st.download_button("Download Rotated PDF", data=doc.write(), file_name="rotated.pdf", mime="application/pdf")
 
-    with pdf_tab3:
-        st.subheader("Convert Images to a single PDF")
-        img_files = st.file_uploader("Select Images (JPG, PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="img_to_pdf")
-        
+    elif selected_tool == "Remove PDF pages":
+        st.subheader("Remove Specific Pages")
+        rm_pdf = st.file_uploader("Upload PDF", type="pdf")
+        pages_to_rm = st.text_input("Pages to remove (comma separated, e.g., 1, 3, 5)")
+        if st.button("Remove Pages") and rm_pdf and pages_to_rm:
+            try:
+                doc = fitz.open(stream=rm_pdf.read(), filetype="pdf")
+                # Convert 1-based user input to 0-based python index
+                pages = [int(p.strip()) - 1 for p in pages_to_rm.split(",")]
+                doc.delete_pages(pages)
+                st.download_button("Download Updated PDF", data=doc.write(), file_name="removed_pages.pdf", mime="application/pdf")
+            except Exception as e:
+                st.error("Invalid page numbers.")
+
+    elif selected_tool == "Rearrange PDF pages":
+        st.subheader("Rearrange Pages")
+        re_pdf = st.file_uploader("Upload PDF", type="pdf")
+        page_order = st.text_input("New order (comma separated, e.g., 3, 1, 2)")
+        if st.button("Rearrange") and re_pdf and page_order:
+            try:
+                doc = fitz.open(stream=re_pdf.read(), filetype="pdf")
+                pages = [int(p.strip()) - 1 for p in page_order.split(",")]
+                doc.select(pages)
+                st.download_button("Download Rearranged PDF", data=doc.write(), file_name="rearranged.pdf", mime="application/pdf")
+            except Exception:
+                st.error("Invalid page sequence.")
+
+    # ==========================================
+    # CONVERT
+    # ==========================================
+    elif selected_tool == "Images to PDF":
+        st.subheader("Images to PDF")
+        img_files = st.file_uploader("Select Images", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
         if st.button("Generate PDF") and img_files:
-            images = []
-            for img_file in img_files:
-                img = Image.open(img_file).convert("RGB")
-                images.append(img)
-                
+            images = [Image.open(f).convert("RGB") for f in img_files]
             if images:
                 pdf_bytes = io.BytesIO()
                 images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=images[1:])
-                st.success("PDF generated from images!")
-                st.download_button("Download Image PDF", data=pdf_bytes.getvalue(), file_name="images_convertnext.pdf", mime="application/pdf")
+                st.download_button("Download PDF", data=pdf_bytes.getvalue(), file_name="images.pdf", mime="application/pdf")
 
-    with pdf_tab4:
-        st.subheader("Render PDF Pages as Images")
-        pdf_to_render = st.file_uploader("Upload PDF", type="pdf", key="pdf_to_img")
-        scale = st.slider("Quality Scale", min_value=1.0, max_value=4.0, value=2.0, step=0.5)
-        
-        if st.button("Convert to Images") and pdf_to_render:
-            doc = fitz.open(stream=pdf_to_render.read(), filetype="pdf")
-            mat = fitz.Matrix(scale, scale) 
-            
-            img_cols = st.columns(3) 
+    elif selected_tool == "PDF to Images":
+        st.subheader("PDF to Images")
+        pdf_to_img = st.file_uploader("Upload PDF", type="pdf")
+        if st.button("Convert to PNGs") and pdf_to_img:
+            doc = fitz.open(stream=pdf_to_img.read(), filetype="pdf")
             for i, page in enumerate(doc):
-                pix = page.get_pixmap(matrix=mat)
-                img_data = pix.tobytes("png")
-                
-                with img_cols[i % 3]:
-                    st.image(img_data, caption=f"Page {i+1}", use_container_width=True)
-                    st.download_button(f"⬇️ Page {i+1}", data=img_data, file_name=f"page_{i+1}.png", mime="image/png", key=f"dl_img_{i}")
+                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))
+                st.image(pix.tobytes("png"), caption=f"Page {i+1}", width=300)
+                st.download_button(f"Download Page {i+1}", data=pix.tobytes("png"), file_name=f"page_{i+1}.png", mime="image/png", key=f"img_{i}")
 
+    elif selected_tool == "Extract PDF images":
+        st.subheader("Extract all Images hidden inside a PDF")
+        ext_img_pdf = st.file_uploader("Upload PDF", type="pdf")
+        if st.button("Extract Images") and ext_img_pdf:
+            doc = fitz.open(stream=ext_img_pdf.read(), filetype="pdf")
+            img_count = 0
+            for i in range(len(doc)):
+                for img_info in doc.get_page_images(i):
+                    xref = img_info[0]
+                    base_image = doc.extract_image(xref)
+                    st.download_button(f"Download Image {img_count+1}", data=base_image["image"], file_name=f"ext_img_{img_count}.{base_image['ext']}", key=f"ext_{img_count}")
+                    img_count += 1
+            if img_count == 0: st.info("No images found in this PDF.")
+
+    # ==========================================
+    # SECURITY & EDITING
+    # ==========================================
+    elif selected_tool == "Protect PDF":
+        st.subheader("Add Password to PDF")
+        lock_pdf = st.file_uploader("Upload PDF", type="pdf")
+        pwd = st.text_input("Enter Password", type="password")
+        if st.button("Encrypt PDF") and lock_pdf and pwd:
+            doc = fitz.open(stream=lock_pdf.read(), filetype="pdf")
+            doc.save("temp.pdf", encryption=fitz.PDF_ENCRYPT_AES_256, user_pw=pwd, owner_pw=pwd)
+            with open("temp.pdf", "rb") as f:
+                st.download_button("Download Locked PDF", data=f, file_name="locked.pdf", mime="application/pdf")
+
+    elif selected_tool == "Unlock PDF":
+        st.subheader("Remove Password from PDF")
+        unlock_pdf = st.file_uploader("Upload Locked PDF", type="pdf")
+        pwd = st.text_input("Enter Current Password", type="password")
+        if st.button("Unlock") and unlock_pdf and pwd:
+            doc = fitz.open(stream=unlock_pdf.read(), filetype="pdf")
+            if doc.authenticate(pwd):
+                st.download_button("Download Unlocked PDF", data=doc.write(), file_name="unlocked.pdf", mime="application/pdf")
+            else:
+                st.error("Incorrect Password.")
+
+    elif selected_tool == "Add watermark":
+        st.subheader("Add Text Watermark")
+        wm_pdf = st.file_uploader("Upload PDF", type="pdf")
+        wm_text = st.text_input("Watermark Text", value="CONFIDENTIAL")
+        if st.button("Add Watermark") and wm_pdf and wm_text:
+            doc = fitz.open(stream=wm_pdf.read(), filetype="pdf")
+            for page in doc:
+                page.insert_text((100, 100), wm_text, fontsize=50, color=(1, 0, 0), fill_opacity=0.3, rotate=45)
+            st.download_button("Download Watermarked PDF", data=doc.write(), file_name="watermark.pdf", mime="application/pdf")
+
+    elif selected_tool == "Redact PDF":
+        st.subheader("Redact (Blackout) Text")
+        redact_pdf = st.file_uploader("Upload PDF", type="pdf")
+        search_text = st.text_input("Exact Text to Redact")
+        if st.button("Redact Document") and redact_pdf and search_text:
+            doc = fitz.open(stream=redact_pdf.read(), filetype="pdf")
+            count = 0
+            for page in doc:
+                areas = page.search_for(search_text)
+                for area in areas:
+                    page.add_redact_annot(area, fill=(0, 0, 0))
+                    count += 1
+                page.apply_redactions()
+            st.success(f"Redacted {count} instances.")
+            st.download_button("Download Redacted PDF", data=doc.write(), file_name="redacted.pdf", mime="application/pdf")
+
+    elif selected_tool == "Web optimize PDF":
+        st.subheader("Fast Web View (Linearize)")
+        opt_pdf = st.file_uploader("Upload PDF", type="pdf")
+        if st.button("Optimize") and opt_pdf:
+            doc = fitz.open(stream=opt_pdf.read(), filetype="pdf")
+            st.download_button("Download Optimized PDF", data=doc.write(linear=True), file_name="optimized.pdf", mime="application/pdf")
+
+    elif selected_tool == "Compress PDF (Target Size)":
+        st.subheader("Compress PDF")
+        comp_pdf = st.file_uploader("Upload PDF", type="pdf")
+        if st.button("Basic Compression") and comp_pdf:
+            doc = fitz.open(stream=comp_pdf.read(), filetype="pdf")
+            # Garbage=4 and deflate removes unused objects and compresses streams
+            st.download_button("Download Compressed", data=doc.write(garbage=4, deflate=True), file_name="compressed.pdf", mime="application/pdf")
+            st.info("Note: Extreme target size compression (KB) requires deep image downsampling which takes longer. Basic compression applied.")
+
+    # ==========================================
+    # PLACEHOLDERS FOR ADVANCED/EXTERNAL TOOLS
+    # ==========================================
+    else:
+        st.subheader(selected_tool)
+        st.info(f"The logic for **{selected_tool}** is highly complex and requires additional system-level libraries (like `pdf2docx`, `wkhtmltopdf`, or Digital Signature cryptography). We will build this in the next phase!")
 elif page == "🖼️ Image":
     st.header("🖼️ Image Studio")
     
