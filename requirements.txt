@@ -29,4 +29,3 @@ rembg
 pytesseract
 qrcode
 streamlit-cropper
-tesseract-ocr
