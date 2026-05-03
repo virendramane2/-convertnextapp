@@ -1034,6 +1034,103 @@ elif page == "🎓 Education":
         sci_val = st.number_input("Number to convert", value=1234567.89)
         if st.button("Convert to Notation"):
             st.info(f"### {sci_val:e}")
+# ==========================================
+    # TAB 7: SCIENTIFIC CALCULATOR
+    # ==========================================
+    with edu_tab1:
+        st.subheader("🧮 Scientific Calculator")
+        
+        # Initialize session state to remember button clicks
+        if "calc_input" not in st.session_state:
+            st.session_state.calc_input = ""
+            
+        def button_click(val):
+            if st.session_state.calc_input == "Error":
+                st.session_state.calc_input = ""
+            st.session_state.calc_input += str(val)
+            
+        def calculate_result():
+            try:
+                # Replace UI symbols with Python math operators
+                expr = st.session_state.calc_input.replace('×', '*').replace('÷', '/')
+                expr = expr.replace('^', '**')
+                
+                # Create a safe execution environment using Python's math module
+                safe_dict = {k: v for k, v in math.__dict__.items() if not k.startswith("__")}
+                safe_dict["__builtins__"] = None
+                
+                result = eval(expr, safe_dict)
+                st.session_state.calc_input = str(result)
+            except Exception:
+                st.session_state.calc_input = "Error"
+                
+        def clear_calc():
+            st.session_state.calc_input = ""
+
+        # Calculator Display Screen
+        st.text_input("Screen", value=st.session_state.calc_input, key="calc_screen", disabled=True, label_visibility="collapsed")
+        
+        # Custom CSS to make the calculator buttons look uniform
+        st.markdown("""
+            <style>
+            div[data-testid="column"] button {
+                width: 100%;
+                font-size: 1.2rem;
+                font-weight: bold;
+                height: 3rem;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        # Button Grid Layout (5 columns)
+        r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns(5)
+        r2_c1, r2_c2, r2_c3, r2_c4, r2_c5 = st.columns(5)
+        r3_c1, r3_c2, r3_c3, r3_c4, r3_c5 = st.columns(5)
+        r4_c1, r4_c2, r4_c3, r4_c4, r4_c5 = st.columns(5)
+        r5_c1, r5_c2, r5_c3, r5_c4, r5_c5 = st.columns(5)
+        
+        # Row 1
+        with r1_c1: st.button("AC", on_click=clear_calc, type="primary")
+        with r1_c2: st.button("(", on_click=button_click, args=("(",))
+        with r1_c3: st.button(")", on_click=button_click, args=(")",))
+        with r1_c4: st.button("÷", on_click=button_click, args=("÷",))
+        with r1_c5: st.button("sin", on_click=button_click, args=("sin(",))
+        
+        # Row 2
+        with r2_c1: st.button("7", on_click=button_click, args=("7",))
+        with r2_c2: st.button("8", on_click=button_click, args=("8",))
+        with r2_c3: st.button("9", on_click=button_click, args=("9",))
+        with r2_c4: st.button("×", on_click=button_click, args=("×",))
+        with r2_c5: st.button("cos", on_click=button_click, args=("cos(",))
+        
+        # Row 3
+        with r3_c1: st.button("4", on_click=button_click, args=("4",))
+        with r3_c2: st.button("5", on_click=button_click, args=("5",))
+        with r3_c3: st.button("6", on_click=button_click, args=("6",))
+        with r3_c4: st.button("-", on_click=button_click, args=("-",))
+        with r3_c5: st.button("tan", on_click=button_click, args=("tan(",))
+        
+        # Row 4
+        with r4_c1: st.button("1", on_click=button_click, args=("1",))
+        with r4_c2: st.button("2", on_click=button_click, args=("2",))
+        with r4_c3: st.button("3", on_click=button_click, args=("3",))
+        with r4_c4: st.button("+", on_click=button_click, args=("+",))
+        with r4_c5: st.button("log", on_click=button_click, args=("log10(",))
+        
+        # Row 5
+        with r5_c1: st.button("0", on_click=button_click, args=("0",))
+        with r5_c2: st.button(".", on_click=button_click, args=(".",))
+        with r5_c3: st.button("π", on_click=button_click, args=("pi",))
+        with r5_c4: st.button("=", on_click=calculate_result, type="primary")
+        with r5_c5: st.button("√", on_click=button_click, args=("sqrt(",))
+
+        st.divider()
+        st.subheader("General Percentage (What is X% of Y?)")
+        p_col1, p_col2 = st.columns(2)
+        perc_val = p_col1.number_input("What is (%)", value=20.0, step=1.0)
+        perc_tot = p_col2.number_input("of (Total)", value=100.0, step=10.0)
+        if st.button("Calculate Percentage"):
+            st.success(f"### {perc_val}% of {perc_tot} is {(perc_val / 100) * perc_tot:,.2f}")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("© 2026 convertnext.in | Powered by Streamlit")
