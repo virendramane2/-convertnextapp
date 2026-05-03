@@ -1,3 +1,22 @@
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ExifTags
+import io
+import qrcode
+
+# Safe imports for external heavy libraries
+try:
+    from rembg import remove
+except ImportError:
+    remove = None
+
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
+
+try:
+    from streamlit_cropper import st_cropper
+except ImportError:
+    st_cropper = None
 from PIL import ImageDraw, ImageFont, ImageEnhance, ExifTags
 import qrcode
 import pytesseract
