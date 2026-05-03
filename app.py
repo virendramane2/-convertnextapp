@@ -168,7 +168,8 @@ elif page == "📝 Text & AI":
 elif page == "💰 Finance":
     st.header("💰 Financial Calculators")
     
-    fin_tab1, fin_tab2, fin_tab3 = st.tabs(["Loan EMI", "Compound Interest", "🇮🇳 Tax (FY 25-26)"])
+    # Added the 4th tab for Currency
+    fin_tab1, fin_tab2, fin_tab3, fin_tab4 = st.tabs(["Loan EMI", "Compound Interest", "🇮🇳 Tax (FY 25-26)", "💱 Currency"])
     
     with fin_tab1:
         st.subheader("Loan EMI Calculator")
@@ -254,6 +255,42 @@ elif page == "💰 Finance":
             t_res1.metric("Income Tax", f"₹ {tax:,.2f}")
             t_res2.metric("Health & Edu Cess (4%)", f"₹ {cess:,.2f}")
             t_res3.metric("Total Tax Payable", f"₹ {total_tax:,.2f}", delta_color="inverse")
+
+    with fin_tab4:
+        st.subheader("💱 Live Currency Converter")
+        try:
+            # Fetch live currency list from Frankfurter API
+            req = urllib.request.urlopen('https://api.frankfurter.app/currencies')
+            currencies = json.loads(req.read())
+            curr_list = list(currencies.keys())
+            
+            # Default to USD -> INR if they exist in the list
+            default_from = curr_list.index("USD") if "USD" in curr_list else 0
+            default_to = curr_list.index("INR") if "INR" in curr_list else 0
+
+            cur_col1, cur_col2, cur_col3 = st.columns(3)
+            with cur_col1:
+                cur_amt = st.number_input("Amount", min_value=0.0, value=1.0, step=1.0)
+            with cur_col2:
+                cur_from = st.selectbox("From", curr_list, index=default_from)
+            with cur_col3:
+                cur_to = st.selectbox("To", curr_list, index=default_to)
+
+            if st.button("Convert Currency", type="primary", use_container_width=True):
+                if cur_from == cur_to:
+                    st.success(f"**{cur_amt} {cur_from}** = **{cur_amt} {cur_to}**")
+                elif cur_amt > 0:
+                    with st.spinner("Fetching live rates..."):
+                        conv_req = urllib.request.urlopen(f"https://api.frankfurter.app/latest?amount={cur_amt}&from={cur_from}&to={cur_to}")
+                        conv_data = json.loads(conv_req.read())
+                        converted_amt = conv_data['rates'][cur_to]
+                        
+                        st.success(f"**{cur_amt:,.2f} {cur_from}** = **{converted_amt:,.2f} {cur_to}**")
+                else:
+                    st.warning("Please enter an amount greater than zero.")
+
+        except Exception as e:
+            st.error("Could not fetch live exchange rates. Please check your internet connection or try again later.")
 
 elif page == "📄 PDF":
     st.header("📄 PDF Management")
