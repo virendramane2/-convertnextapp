@@ -1,3 +1,9 @@
+import numpy as np
+
+try:
+    from streamlit_drawable_canvas import st_canvas
+except ImportError:
+    st_canvas = None
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ExifTags
 import io
 import qrcode
@@ -612,7 +618,85 @@ elif page == "🖼️ Image":
             st.download_button("Download QR", data=buf.getvalue(), file_name="qr.png", mime="image/png")
 elif page == "✒️ Signature":
     st.header("✒️ Signature Pad")
-    st.info("Coming soon: Streamlit-drawable-canvas integration.")
+    
+    sig_tab1, sig_tab2 = st.tabs(["✒️ Create Signature", "📐 Resize Signature"])
+    
+    # ==========================================
+    # TAB 1: CREATE SIGNATURE
+    # ==========================================
+    with sig_tab1:
+        st.subheader("Draw Your Signature")
+        
+        if not st_canvas:
+            st.error("Please add `streamlit-drawable-canvas` to your requirements.txt")
+        else:
+            # Controls for the canvas
+            c1, c2, c3 = st.columns(3)
+            stroke_width = c1.slider("Pen Thickness", 1, 10, 3)
+            stroke_color = c2.color_picker("Pen Color", "#000000")
+            bg_color = c3.color_picker("Background Color", "#FFFFFF")
+            
+            st.write("Draw inside the box below:")
+            
+            # The interactive canvas component
+            canvas_result = st_canvas(
+                fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
+                stroke_width=stroke_width,
+                stroke_color=stroke_color,
+                background_color=bg_color,
+                update_streamlit=True,
+                height=250,
+                drawing_mode="freedraw",
+                key="signature_canvas",
+            )
+            
+            # If the user has drawn something, give them the option to download it
+            if canvas_result.image_data is not None:
+                # The canvas returns a numpy array. We convert it to a PIL Image.
+                img_data = canvas_result.image_data
+                
+                # Only show download if the canvas isn't completely blank
+                if np.any(img_data != 0): 
+                    img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
+                    buf = io.BytesIO()
+                    img.save(buf, format="PNG")
+                    
+                    st.download_button(
+                        label="Download Signature (PNG)",
+                        data=buf.getvalue(),
+                        file_name="signature.png",
+                        mime="image/png",
+                        type="primary"
+                    )
+
+    # ==========================================
+    # TAB 2: RESIZE SIGNATURE
+    # ==========================================
+    with sig_tab2:
+        st.subheader("Resize Existing Signature")
+        sig_file = st.file_uploader("Upload Signature Image", type=["png", "jpg", "jpeg"], key="sig_up")
+        
+        if sig_file:
+            img = Image.open(sig_file)
+            st.write(f"Current Size: {img.width} x {img.height} px")
+            
+            c1, c2 = st.columns(2)
+            new_w = c1.number_input("Target Width (px)", value=300)
+            new_h = c2.number_input("Target Height (px)", value=100)
+            
+            if st.button("Resize Signature"):
+                resized = img.resize((int(new_w), int(new_h)))
+                st.image(resized, caption="Resized Preview")
+                
+                buf = io.BytesIO()
+                resized.save(buf, format="PNG")
+                st.download_button(
+                    "Download Resized Signature", 
+                    data=buf.getvalue(), 
+                    file_name="resized_signature.png", 
+                    mime="image/png",
+                    type="primary"
+                )
 
 elif page == "⚖️ Units":
     st.header("⚖️ Unit Converter")
