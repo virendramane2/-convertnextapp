@@ -1,3 +1,7 @@
+import math
+import statistics
+import cmath
+import pandas as pd
 import streamlit as st
 import hashlib
 import uuid
@@ -851,7 +855,185 @@ elif page == "⚖️ Units":
 
 elif page == "🎓 Education":
     st.header("🎓 Education & Math Tools")
-    st.info("Coming soon: Education calculators.")
+    
+    edu_tab1, edu_tab2, edu_tab3, edu_tab4, edu_tab5, edu_tab6 = st.tabs([
+        "🔢 Basic Math", "✖️ Algebra", "📐 Geometry", "📊 Statistics", "🎓 Grades & CGPA", "🔄 Converters"
+    ])
+    
+    # ==========================================
+    # TAB 1: BASIC MATH
+    # ==========================================
+    with edu_tab1:
+        st.subheader("General Percentage (What is X% of Y?)")
+        p_col1, p_col2 = st.columns(2)
+        perc_val = p_col1.number_input("What is (%)", value=20.0, step=1.0)
+        perc_tot = p_col2.number_input("of (Total)", value=100.0, step=10.0)
+        if st.button("Calculate Percentage"):
+            st.success(f"### {perc_val}% of {perc_tot} is {(perc_val / 100) * perc_tot:,.2f}")
+
+        st.divider()
+        st.subheader("Expression Evaluator")
+        st.caption("A faster way to calculate. Type any math expression (e.g., (15 * 4) / 2 + math.sin(math.pi/2))")
+        expr = st.text_input("Math Expression", value="(7 + 5) * 3")
+        if st.button("Evaluate"):
+            try:
+                # Safe eval using Python's math dictionary
+                safe_dict = {"math": math, "__builtins__": None}
+                result = eval(expr, safe_dict)
+                st.success(f"### Result: {result}")
+            except Exception as e:
+                st.error("Invalid expression. Please use standard math symbols.")
+
+    # ==========================================
+    # TAB 2: ALGEBRA
+    # ==========================================
+    with edu_tab2:
+        st.subheader("Number Properties (Factors, Prime)")
+        num_prop = st.number_input("Enter Integer", min_value=1, value=12, step=1)
+        if st.button("Analyze Number"):
+            factors = [i for i in range(1, num_prop + 1) if num_prop % i == 0]
+            is_prime = len(factors) == 2
+            st.info(f"**Factors:** {', '.join(map(str, factors))}")
+            st.info(f"**Is Prime?** {'Yes ✅' if is_prime else 'No ❌'}")
+            
+        st.divider()
+        st.subheader("GCD (HCF) & LCM")
+        gcd_in = st.text_input("Enter numbers separated by commas (e.g., 12, 18, 24)", value="12, 18, 24")
+        if st.button("Calculate GCD & LCM"):
+            try:
+                nums = [int(x.strip()) for x in gcd_in.split(",")]
+                res_gcd = math.gcd(*nums)
+                res_lcm = math.lcm(*nums)
+                st.success(f"**GCD (HCF):** {res_gcd}  |  **LCM:** {res_lcm}")
+            except Exception:
+                st.error("Please enter valid integers separated by commas.")
+
+        st.divider()
+        st.subheader("Quadratic Equation Solver (ax² + bx + c = 0)")
+        q_c1, q_c2, q_c3 = st.columns(3)
+        q_a = q_c1.number_input("a", value=1.0)
+        q_b = q_c2.number_input("b", value=-5.0)
+        q_c = q_c3.number_input("c", value=6.0)
+        if st.button("Solve Equation"):
+            if q_a == 0:
+                st.error("'a' cannot be zero.")
+            else:
+                d = (q_b**2) - (4*q_a*q_c)
+                sol1 = (-q_b - cmath.sqrt(d)) / (2*q_a)
+                sol2 = (-q_b + cmath.sqrt(d)) / (2*q_a)
+                # Format to remove complex part if it's real
+                s1_str = f"{sol1.real:.2f}" if sol1.imag == 0 else f"{sol1.real:.2f} + {sol1.imag:.2f}i"
+                s2_str = f"{sol2.real:.2f}" if sol2.imag == 0 else f"{sol2.real:.2f} + {sol2.imag:.2f}i"
+                st.success(f"**Roots:** x₁ = {s1_str}, x₂ = {s2_str}")
+
+    # ==========================================
+    # TAB 3: GEOMETRY
+    # ==========================================
+    with edu_tab3:
+        shape = st.selectbox("Select Shape", ["Circle", "Right Triangle", "Rectangle", "Triangle"])
+        if shape == "Circle":
+            r = st.number_input("Radius (r)", min_value=0.0, value=5.0)
+            if st.button("Calculate Circle"):
+                st.info(f"**Area:** {math.pi * (r**2):.2f} | **Circumference:** {2 * math.pi * r:.2f}")
+        elif shape == "Right Triangle":
+            st.caption("Pythagorean Theorem: a² + b² = c²")
+            g_c1, g_c2 = st.columns(2)
+            a = g_c1.number_input("Side a", min_value=0.0, value=3.0)
+            b = g_c2.number_input("Side b", min_value=0.0, value=4.0)
+            if st.button("Find Hypotenuse (c)"):
+                st.info(f"**Hypotenuse (c):** {math.sqrt(a**2 + b**2):.2f}")
+        elif shape == "Rectangle":
+            g_c1, g_c2 = st.columns(2)
+            l = g_c1.number_input("Length", min_value=0.0, value=10.0)
+            w = g_c2.number_input("Width", min_value=0.0, value=5.0)
+            if st.button("Calculate Rectangle"):
+                st.info(f"**Area:** {l * w:.2f} | **Perimeter:** {2 * (l + w):.2f}")
+        elif shape == "Triangle":
+            g_c1, g_c2 = st.columns(2)
+            base = g_c1.number_input("Base", min_value=0.0, value=10.0)
+            height = g_c2.number_input("Height", min_value=0.0, value=5.0)
+            if st.button("Calculate Triangle Area"):
+                st.info(f"**Area:** {0.5 * base * height:.2f}")
+
+    # ==========================================
+    # TAB 4: STATISTICS
+    # ==========================================
+    with edu_tab4:
+        st.subheader("Descriptive Statistics")
+        stats_in = st.text_area("Enter Dataset (comma separated)", value="12, 5, 7, 12, 9, 15, 21")
+        if st.button("Calculate Statistics"):
+            try:
+                arr = sorted([float(x.strip()) for x in stats_in.split(",")])
+                if not arr: raise ValueError
+                st.markdown(f"""
+                * **Count:** {len(arr)}
+                * **Sum:** {sum(arr):.2f}
+                * **Mean (Average):** {statistics.mean(arr):.2f}
+                * **Median:** {statistics.median(arr)}
+                * **Mode:** {statistics.mode(arr)}
+                * **Range:** {max(arr) - min(arr)}
+                * **Standard Deviation:** {statistics.stdev(arr) if len(arr) > 1 else 0:.2f}
+                * **Sorted Data:** {arr}
+                """)
+            except Exception:
+                st.error("Please enter valid numbers separated by commas.")
+
+    # ==========================================
+    # TAB 5: GRADES & CGPA
+    # ==========================================
+    with edu_tab5:
+        st.subheader("📝 Exam Percentage Calculator")
+        gr_c1, gr_c2 = st.columns(2)
+        obt = gr_c1.number_input("Marks Obtained", min_value=0.0, value=450.0)
+        tot = gr_c2.number_input("Total Marks", min_value=1.0, value=500.0)
+        if st.button("Calculate Exam Percentage"):
+            st.success(f"### Score: {(obt / tot) * 100:.2f}%")
+
+        st.divider()
+        st.subheader("🎓 CGPA Calculator")
+        st.caption("Edit the table below to add your subjects.")
+        
+        # Using Pandas & Streamlit Data Editor for a highly interactive grid!
+        default_cgpa_data = pd.DataFrame([{"Credit": 3.0, "Grade Point": 8.0}, {"Credit": 4.0, "Grade Point": 9.0}])
+        edited_df = st.data_editor(default_cgpa_data, num_rows="dynamic", use_container_width=True)
+        
+        if st.button("Calculate CGPA"):
+            total_credits = edited_df["Credit"].sum()
+            total_points = (edited_df["Credit"] * edited_df["Grade Point"]).sum()
+            if total_credits > 0:
+                st.success(f"### Your CGPA is: {total_points / total_credits:.2f}")
+            else:
+                st.warning("Total credits cannot be zero.")
+
+        st.divider()
+        st.subheader("🔄 CGPA to Percentage Converter")
+        cg_c1, cg_c2 = st.columns(2)
+        cgpa_val = cg_c1.number_input("CGPA", min_value=0.0, value=8.5, step=0.1)
+        cgpa_mult = cg_c2.number_input("Multiplier (e.g., 9.5)", min_value=0.0, value=9.5, step=0.1)
+        if st.button("Convert to Percentage"):
+            st.info(f"### Percentage: {cgpa_val * cgpa_mult:.2f}%")
+
+    # ==========================================
+    # TAB 6: CONVERTERS
+    # ==========================================
+    with edu_tab6:
+        st.subheader("Number Base Converter")
+        base_val = st.text_input("Enter a Decimal Number to convert:", value="255")
+        if st.button("Convert Bases"):
+            try:
+                dec = int(base_val)
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Decimal", str(dec))
+                c2.metric("Binary", bin(dec)[2:])
+                c3.metric("Hexadecimal", hex(dec)[2:].upper())
+            except ValueError:
+                st.error("Please enter a valid integer.")
+                
+        st.divider()
+        st.subheader("Scientific Notation")
+        sci_val = st.number_input("Number to convert", value=1234567.89)
+        if st.button("Convert to Notation"):
+            st.info(f"### {sci_val:e}")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("© 2026 convertnext.in | Powered by Streamlit")
