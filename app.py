@@ -515,9 +515,110 @@ elif page == "📄 PDF":
             st.download_button("Download Compressed", data=doc.write(garbage=4, deflate=True), file_name="compressed.pdf", mime="application/pdf")
             st.info("Note: Extreme target size compression (KB) requires deep image downsampling which takes longer. Basic compression applied.")
 
+   # ==========================================
+    # FINAL ADVANCED TOOLS
     # ==========================================
-    # PLACEHOLDERS FOR ADVANCED/EXTERNAL TOOLS
-    # ==========================================
+    elif selected_tool == "Create PDF":
+        st.subheader("📝 Create PDF from Scratch")
+        st.info("Type your content below to generate a brand new PDF document.")
+        new_pdf_text = st.text_area("Enter Document Text", height=300)
+        
+        if st.button("Generate PDF", type="primary") and new_pdf_text:
+            doc = fitz.open()
+            page = doc.new_page()
+            
+            # Simple text insertion with automatic word wrapping
+            rect = fitz.Rect(50, 50, page.rect.width - 50, page.rect.height - 50)
+            page.insert_textbox(rect, new_pdf_text, fontsize=12, fontname="helv", color=(0,0,0))
+            
+            st.success("PDF Created Successfully!")
+            st.download_button("Download New PDF", data=doc.write(), file_name="new_document.pdf", mime="application/pdf")
+
+    elif selected_tool == "Edit PDF":
+        st.subheader("🖍️ Edit PDF (Add Text/Annotations)")
+        st.info("Since PDFs are flattened, you cannot easily delete existing text, but you can overlay new text anywhere on the page!")
+        edit_pdf = st.file_uploader("Upload PDF to Edit", type="pdf")
+        
+        edit_page = st.number_input("Page Number", min_value=1, value=1)
+        edit_text = st.text_input("Text to Add", value="APPROVED")
+        
+        c1, c2 = st.columns(2)
+        x_pos = c1.number_input("X Position (Left to Right)", value=100)
+        y_pos = c2.number_input("Y Position (Top to Bottom)", value=100)
+        
+        if st.button("Apply Text", type="primary") and edit_pdf and edit_text:
+            doc = fitz.open(stream=edit_pdf.read(), filetype="pdf")
+            if 1 <= edit_page <= len(doc):
+                page = doc[edit_page - 1]
+                page.insert_text((x_pos, y_pos), edit_text, fontsize=18, color=(1, 0, 0)) # Red text by default
+                
+                st.success("Text added successfully!")
+                st.download_button("Download Edited PDF", data=doc.write(), file_name="edited.pdf", mime="application/pdf")
+            else:
+                st.error("Invalid page number.")
+
+    elif selected_tool == "PDF Overlay":
+        st.subheader("🥪 PDF Overlay (Merge Layers)")
+        st.info("Stamps one PDF directly on top of another. Great for applying letterheads or complex watermarks.")
+        base_pdf = st.file_uploader("Upload Base PDF (Bottom Layer)", type="pdf", key="base")
+        top_pdf = st.file_uploader("Upload Overlay PDF (Top Layer)", type="pdf", key="top")
+        
+        if st.button("Overlay PDFs", type="primary") and base_pdf and top_pdf:
+            doc_base = fitz.open(stream=base_pdf.read(), filetype="pdf")
+            doc_top = fitz.open(stream=top_pdf.read(), filetype="pdf")
+            
+            # Overlay page by page up to the shortest document's length
+            pages_to_process = min(len(doc_base), len(doc_top))
+            
+            for i in range(pages_to_process):
+                # show_pdf_page places the top document over the base document
+                doc_base[i].show_pdf_page(doc_base[i].rect, doc_top, i)
+                
+            st.success("PDFs Overlayed Successfully!")
+            st.download_button("Download Overlayed PDF", data=doc_base.write(), file_name="overlayed.pdf", mime="application/pdf")
+
+    elif selected_tool == "Compare PDFs":
+        st.subheader("⚖️ Compare PDFs (Text Diff)")
+        st.info("Finds the text differences between two documents.")
+        comp_pdf1 = st.file_uploader("Upload Original PDF", type="pdf", key="comp1")
+        comp_pdf2 = st.file_uploader("Upload Modified PDF", type="pdf", key="comp2")
+        
+        if st.button("Compare Text", type="primary") and comp_pdf1 and comp_pdf2:
+            import difflib
+            doc1 = fitz.open(stream=comp_pdf1.read(), filetype="pdf")
+            doc2 = fitz.open(stream=comp_pdf2.read(), filetype="pdf")
+            
+            text1 = "\n".join([page.get_text() for page in doc1]).splitlines()
+            text2 = "\n".join([page.get_text() for page in doc2]).splitlines()
+            
+            diff = list(difflib.unified_diff(text1, text2, lineterm=""))
+            
+            if not diff:
+                st.success("The text in both PDFs is identical!")
+            else:
+                st.warning("Differences found:")
+                diff_text = "\n".join(diff[:100]) # Limit to first 100 lines to prevent crashing on massive diffs
+                st.code(diff_text, language="diff")
+
+    elif selected_tool == "Webpage to PDF":
+        st.subheader("🌐 Webpage to PDF")
+        st.info("Note: This tool requires the 'wkhtmltopdf' software installed on your server.")
+        url_input = st.text_input("Enter Website URL", placeholder="https://www.google.com")
+        
+        if st.button("Convert to PDF", type="primary") and url_input:
+            try:
+                import pdfkit
+                with st.spinner("Fetching webpage and rendering PDF..."):
+                    try:
+                        # options to ignore load errors for modern websites with heavy JS
+                        options = {'quiet': ''} 
+                        pdf_bytes = pdfkit.from_url(url_input, False, options=options)
+                        st.success("Webpage converted successfully!")
+                        st.download_button("Download Web PDF", data=pdf_bytes, file_name="webpage.pdf", mime="application/pdf")
+                    except OSError:
+                        st.error("System Error: 'wkhtmltopdf' is not installed on this server. This library is required for URL conversions.")
+            except ImportError:
+                st.error("Python library 'pdfkit' is missing. Please add it to requirements.txt.")
     else:
         st.subheader(selected_tool)
         st.info(f"The logic for **{selected_tool}** is highly complex and requires additional system-level libraries (like `pdf2docx`, `wkhtmltopdf`, or Digital Signature cryptography). We will build this in the next phase!")
