@@ -9,3 +9,7 @@ rembg
 markdown
 rembg[cpu]
 onnxruntime
+streamlit
+google-generativeai
+PyMuPDF
+Pillow
