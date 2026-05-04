@@ -398,6 +398,39 @@ elif page == "📄 PDF":
                 st.download_button("Download Updated PDF", data=doc.write(), file_name="removed_pages.pdf", mime="application/pdf")
             except Exception as e:
                 st.error("Invalid page numbers.")
+                
+    elif selected_tool == "PDF OCR":
+        st.subheader("👁️‍🗨️ PDF OCR (Extract text from Scanned PDFs)")
+        st.info("Standard text extraction fails on scanned PDFs. This tool uses AI (Tesseract) to read the actual images inside the PDF.")
+        ocr_pdf = st.file_uploader("Upload Scanned PDF", type="pdf")
+        
+        if st.button("Run OCR Scan", type="primary") and ocr_pdf:
+            try:
+                import pytesseract
+                with st.spinner("Scanning images for text... (This takes a few seconds per page)"):
+                    doc = fitz.open(stream=ocr_pdf.read(), filetype="pdf")
+                    full_text = ""
+                    img_count = 0
+                    
+                    for i in range(len(doc)):
+                        for img_info in doc.get_page_images(i):
+                            xref = img_info[0]
+                            base_image = doc.extract_image(xref)
+                            img = Image.open(io.BytesIO(base_image["image"]))
+                            
+                            # Run optical character recognition on the extracted image
+                            full_text += pytesseract.image_to_string(img) + "\n\n"
+                            img_count += 1
+                            
+                    if img_count == 0:
+                        st.warning("No images found to scan. Try using the standard 'Extract Text' tool instead.")
+                    else:
+                        st.success(f"Successfully scanned {img_count} images!")
+                        st.text_area("Extracted OCR Text:", value=full_text, height=300)
+            except ImportError:
+                st.error("pytesseract is missing. Please add it to requirements.txt.")
+            except Exception as e:
+                st.error(f"OCR Error: Make sure Tesseract-OCR system software is installed. Details: {e}")
 
     elif selected_tool == "Rearrange PDF pages":
         st.subheader("Rearrange Pages")
