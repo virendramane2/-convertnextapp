@@ -398,6 +398,37 @@ elif page == "📄 PDF":
                 st.download_button("Download Updated PDF", data=doc.write(), file_name="removed_pages.pdf", mime="application/pdf")
             except Exception as e:
                 st.error("Invalid page numbers.")
+
+    # ==========================================
+    # SIGN, OCR, AND CONVERT TOOLS
+    # ==========================================
+    elif selected_tool == "Sign PDF":
+        st.subheader("✒️ Sign PDF (Overlay Signature)")
+        sign_pdf = st.file_uploader("Upload PDF to Sign", type="pdf", key="sign_pdf")
+        sig_img = st.file_uploader("Upload Signature Image (PNG with transparent background is best)", type=["png", "jpg", "jpeg"], key="sig_img")
+        
+        st.write("### Positioning")
+        page_num = st.number_input("Page Number to place signature", min_value=1, value=1)
+        
+        c1, c2 = st.columns(2)
+        x_pos = c1.number_input("X Position (Left to Right)", value=100)
+        y_pos = c2.number_input("Y Position (Top to Bottom)", value=700)
+        
+        if st.button("Apply Signature", type="primary") and sign_pdf and sig_img:
+            doc = fitz.open(stream=sign_pdf.read(), filetype="pdf")
+            if 1 <= page_num <= len(doc):
+                page = doc[page_num - 1]
+                
+                # Define the rectangle where the signature will be placed (width: 150px, height: 50px)
+                rect = fitz.Rect(x_pos, y_pos, x_pos + 150, y_pos + 50)
+                img_bytes = sig_img.read()
+                
+                # Overlay the image onto the PDF
+                page.insert_image(rect, stream=img_bytes)
+                st.success("Signature applied successfully!")
+                st.download_button("Download Signed PDF", data=doc.write(), file_name="signed_document.pdf", mime="application/pdf")
+            else:
+                st.error("Invalid page number. The PDF doesn't have that many pages.")
                 
     elif selected_tool == "PDF OCR":
         st.subheader("👁️‍🗨️ PDF OCR (Extract text from Scanned PDFs)")
