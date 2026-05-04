@@ -332,7 +332,6 @@ elif page == "💰 Finance":
 elif page == "📄 PDF":
     st.header("📄 Ultimate PDF Suite")
     
-    # The massive list of 24 tools!
     pdf_tools = [
         "Merge PDF", "Split PDF", "Compress PDF (Target Size)", "Edit PDF", "Sign PDF", 
         "PDF Convert", "Images to PDF", "PDF to Images", "Extract PDF images", 
@@ -342,7 +341,6 @@ elif page == "📄 PDF":
         "Web optimize PDF", "Redact PDF", "Create PDF"
     ]
     
-    # Clean UI Dropdown
     selected_tool = st.selectbox("Select PDF Tool", pdf_tools)
     st.divider()
     
@@ -392,185 +390,11 @@ elif page == "📄 PDF":
         if st.button("Remove Pages") and rm_pdf and pages_to_rm:
             try:
                 doc = fitz.open(stream=rm_pdf.read(), filetype="pdf")
-                # Convert 1-based user input to 0-based python index
                 pages = [int(p.strip()) - 1 for p in pages_to_rm.split(",")]
                 doc.delete_pages(pages)
                 st.download_button("Download Updated PDF", data=doc.write(), file_name="removed_pages.pdf", mime="application/pdf")
-            except Exception as e:
+            except Exception:
                 st.error("Invalid page numbers.")
-
-    # ==========================================
-    # SIGN, OCR, AND CONVERT TOOLS
-    # ==========================================
-elif selected_tool == "PDF Convert":
-        st.subheader("🔄 Advanced PDF Converter")
-        st.info("Convert your documents seamlessly between formats.")
-        
-        # Sub-menu for the different conversion types
-        conv_type = st.selectbox("Select Conversion Type", [
-            "PDF to Word", 
-            "PDF to Excel", 
-            "PDF to JPG", 
-            "PDF to Powerpoint", 
-            "PDF to PDF/A", 
-            "eBooks to PDF", 
-            "iWork to PDF"
-        ])
-        
-        st.divider()
-
-        # 1. PDF TO WORD
-        if conv_type == "PDF to Word":
-            conv_pdf = st.file_uploader("Upload PDF to convert to Word", type="pdf", key="pdf2word")
-            if st.button("Convert to Word", type="primary") and conv_pdf:
-                try:
-                    from pdf2docx import Converter
-                    import tempfile
-                    import os
-
-                    with st.spinner("Converting to Word... This might take a minute."):
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
-                            tmp_pdf.write(conv_pdf.read())
-                            pdf_path = tmp_pdf.name
-
-                        docx_path = pdf_path.replace(".pdf", ".docx")
-                        cv = Converter(pdf_path)
-                        cv.convert(docx_path)
-                        cv.close()
-
-                        with open(docx_path, "rb") as f:
-                            st.download_button("⬇️ Download Word Document", data=f, file_name="converted.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", type="primary")
-
-                        os.remove(pdf_path)
-                        os.remove(docx_path)
-                except ImportError:
-                    st.error("Please add `pdf2docx` to your requirements.txt file.")
-
-        # 2. PDF TO EXCEL
-        elif conv_type == "PDF to Excel":
-            st.caption("Note: This extracts visible tables from the PDF into an Excel spreadsheet.")
-            excel_pdf = st.file_uploader("Upload PDF with Tables", type="pdf", key="pdf2excel")
-            if st.button("Convert to Excel", type="primary") and excel_pdf:
-                try:
-                    import pdfplumber
-                    import pandas as pd
-                    import io
-
-                    with st.spinner("Extracting tables to Excel..."):
-                        with pdfplumber.open(excel_pdf) as pdf:
-                            all_tables = []
-                            for page in pdf.pages:
-                                tables = page.extract_tables()
-                                for table in tables:
-                                    df = pd.DataFrame(table[1:], columns=table[0])
-                                    all_tables.append(df)
-                            
-                            if all_tables:
-                                # Combine all extracted tables into one sheet for simplicity
-                                final_df = pd.concat(all_tables, ignore_index=True)
-                                
-                                buffer = io.BytesIO()
-                                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                                    final_df.to_excel(writer, index=False, sheet_name='Extracted Data')
-                                
-                                st.download_button("⬇️ Download Excel File", data=buffer.getvalue(), file_name="extracted_tables.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary")
-                            else:
-                                st.warning("No tabular data found in this PDF.")
-                except ImportError:
-                    st.error("Please add `pdfplumber` and `openpyxl` to requirements.txt.")
-
-        # 3. PDF TO JPG
-        elif conv_type == "PDF to JPG":
-            jpg_pdf = st.file_uploader("Upload PDF to convert to JPGs", type="pdf", key="pdf2jpg")
-            if st.button("Convert to JPG", type="primary") and jpg_pdf:
-                import fitz
-                import zipfile
-                import io
-                
-                with st.spinner("Rendering pages to high-quality JPGs..."):
-                    doc = fitz.open(stream=jpg_pdf.read(), filetype="pdf")
-                    zip_buffer = io.BytesIO()
-                    
-                    # Package all images into a ZIP file for easy downloading
-                    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-                        for i, page in enumerate(doc):
-                            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))
-                            img_bytes = pix.tobytes("jpeg")
-                            zip_file.writestr(f"page_{i+1}.jpg", img_bytes)
-                            
-                    st.download_button("⬇️ Download JPGs (ZIP file)", data=zip_buffer.getvalue(), file_name="converted_images.zip", mime="application/zip", type="primary")
-
-        # 4. COMPLEX FORMATS (Placeholders for Cloud API Integration)
-        elif conv_type in ["PDF to Powerpoint", "PDF to PDF/A"]:
-            st.warning(f"**{conv_type}** requires deep structural file rewriting.")
-            st.info("To implement this in Python, you will need to integrate a cloud service API like **CloudConvert** or **Zamzar**, or install deep system libraries like Ghostscript (for PDF/A). This UI is ready for your API keys in Phase 2!")
-            st.file_uploader("Upload File (API Not Connected)", disabled=True)
-
-        elif conv_type in ["eBooks to PDF", "iWork to PDF"]:
-            st.warning(f"**{conv_type}** deals with proprietary or highly complex reflowable formats.")
-            st.info("Formats like EPUB, MOBI, Pages, and Keynote cannot be perfectly converted using pure offline Python without breaking the formatting. This interface is built and ready for a third-party conversion API integration!")
-            st.file_uploader("Upload File (API Not Connected)", disabled=True)
-    
-    elif selected_tool == "Sign PDF":
-        st.subheader("✒️ Sign PDF (Overlay Signature)")
-        sign_pdf = st.file_uploader("Upload PDF to Sign", type="pdf", key="sign_pdf")
-        sig_img = st.file_uploader("Upload Signature Image (PNG with transparent background is best)", type=["png", "jpg", "jpeg"], key="sig_img")
-        
-        st.write("### Positioning")
-        page_num = st.number_input("Page Number to place signature", min_value=1, value=1)
-        
-        c1, c2 = st.columns(2)
-        x_pos = c1.number_input("X Position (Left to Right)", value=100)
-        y_pos = c2.number_input("Y Position (Top to Bottom)", value=700)
-        
-        if st.button("Apply Signature", type="primary") and sign_pdf and sig_img:
-            doc = fitz.open(stream=sign_pdf.read(), filetype="pdf")
-            if 1 <= page_num <= len(doc):
-                page = doc[page_num - 1]
-                
-                # Define the rectangle where the signature will be placed (width: 150px, height: 50px)
-                rect = fitz.Rect(x_pos, y_pos, x_pos + 150, y_pos + 50)
-                img_bytes = sig_img.read()
-                
-                # Overlay the image onto the PDF
-                page.insert_image(rect, stream=img_bytes)
-                st.success("Signature applied successfully!")
-                st.download_button("Download Signed PDF", data=doc.write(), file_name="signed_document.pdf", mime="application/pdf")
-            else:
-                st.error("Invalid page number. The PDF doesn't have that many pages.")
-                
-    elif selected_tool == "PDF OCR":
-        st.subheader("👁️‍🗨️ PDF OCR (Extract text from Scanned PDFs)")
-        st.info("Standard text extraction fails on scanned PDFs. This tool uses AI (Tesseract) to read the actual images inside the PDF.")
-        ocr_pdf = st.file_uploader("Upload Scanned PDF", type="pdf")
-        
-        if st.button("Run OCR Scan", type="primary") and ocr_pdf:
-            try:
-                import pytesseract
-                with st.spinner("Scanning images for text... (This takes a few seconds per page)"):
-                    doc = fitz.open(stream=ocr_pdf.read(), filetype="pdf")
-                    full_text = ""
-                    img_count = 0
-                    
-                    for i in range(len(doc)):
-                        for img_info in doc.get_page_images(i):
-                            xref = img_info[0]
-                            base_image = doc.extract_image(xref)
-                            img = Image.open(io.BytesIO(base_image["image"]))
-                            
-                            # Run optical character recognition on the extracted image
-                            full_text += pytesseract.image_to_string(img) + "\n\n"
-                            img_count += 1
-                            
-                    if img_count == 0:
-                        st.warning("No images found to scan. Try using the standard 'Extract Text' tool instead.")
-                    else:
-                        st.success(f"Successfully scanned {img_count} images!")
-                        st.text_area("Extracted OCR Text:", value=full_text, height=300)
-            except ImportError:
-                st.error("pytesseract is missing. Please add it to requirements.txt.")
-            except Exception as e:
-                st.error(f"OCR Error: Make sure Tesseract-OCR system software is installed. Details: {e}")
 
     elif selected_tool == "Rearrange PDF pages":
         st.subheader("Rearrange Pages")
@@ -684,114 +508,183 @@ elif selected_tool == "PDF Convert":
         comp_pdf = st.file_uploader("Upload PDF", type="pdf")
         if st.button("Basic Compression") and comp_pdf:
             doc = fitz.open(stream=comp_pdf.read(), filetype="pdf")
-            # Garbage=4 and deflate removes unused objects and compresses streams
             st.download_button("Download Compressed", data=doc.write(garbage=4, deflate=True), file_name="compressed.pdf", mime="application/pdf")
-            st.info("Note: Extreme target size compression (KB) requires deep image downsampling which takes longer. Basic compression applied.")
 
-   # ==========================================
+    # ==========================================
+    # ADVANCED: SIGN, OCR, NUMBERING
+    # ==========================================
+    elif selected_tool == "Sign PDF":
+        st.subheader("✒️ Sign PDF (Overlay Signature)")
+        sign_pdf = st.file_uploader("Upload PDF to Sign", type="pdf", key="sign_pdf")
+        sig_img = st.file_uploader("Upload Signature Image (PNG recommended)", type=["png", "jpg", "jpeg"], key="sig_img")
+        
+        st.write("### Positioning")
+        page_num = st.number_input("Page Number", min_value=1, value=1)
+        c1, c2 = st.columns(2)
+        x_pos = c1.number_input("X Position", value=100)
+        y_pos = c2.number_input("Y Position", value=700)
+        
+        if st.button("Apply Signature", type="primary") and sign_pdf and sig_img:
+            doc = fitz.open(stream=sign_pdf.read(), filetype="pdf")
+            if 1 <= page_num <= len(doc):
+                page = doc[page_num - 1]
+                rect = fitz.Rect(x_pos, y_pos, x_pos + 150, y_pos + 50)
+                page.insert_image(rect, stream=sig_img.read())
+                st.download_button("Download Signed PDF", data=doc.write(), file_name="signed.pdf", mime="application/pdf")
+
+    elif selected_tool == "Add page numbers":
+        st.subheader("🔢 Add Page Numbers")
+        num_pdf = st.file_uploader("Upload PDF", type="pdf")
+        if st.button("Add Numbers", type="primary") and num_pdf:
+            doc = fitz.open(stream=num_pdf.read(), filetype="pdf")
+            for i, page in enumerate(doc):
+                x_coord = (page.rect.width / 2) - 30
+                y_coord = page.rect.height - 30
+                page.insert_text((x_coord, y_coord), f"Page {i + 1} of {len(doc)}", fontsize=10, color=(0,0,0))
+            st.download_button("Download Numbered PDF", data=doc.write(), file_name="numbered.pdf", mime="application/pdf")
+
+    elif selected_tool == "PDF OCR":
+        st.subheader("👁️‍🗨️ PDF OCR (Extract text from Scanned PDFs)")
+        ocr_pdf = st.file_uploader("Upload Scanned PDF", type="pdf")
+        if st.button("Run OCR Scan", type="primary") and ocr_pdf:
+            try:
+                import pytesseract
+                with st.spinner("Scanning images for text..."):
+                    doc = fitz.open(stream=ocr_pdf.read(), filetype="pdf")
+                    full_text = ""
+                    for i in range(len(doc)):
+                        for img_info in doc.get_page_images(i):
+                            base_image = doc.extract_image(img_info[0])
+                            img = Image.open(io.BytesIO(base_image["image"]))
+                            full_text += pytesseract.image_to_string(img) + "\n\n"
+                    st.text_area("Extracted OCR Text:", value=full_text, height=300)
+            except ImportError:
+                st.error("pytesseract is missing. Add it to requirements.txt.")
+
+    # ==========================================
+    # PDF CONVERT SUB-MENU
+    # ==========================================
+    elif selected_tool == "PDF Convert":
+        st.subheader("🔄 Advanced PDF Converter")
+        conv_type = st.selectbox("Conversion Type", ["PDF to Word", "PDF to Excel", "PDF to JPG", "PDF to Powerpoint", "PDF to PDF/A", "eBooks to PDF", "iWork to PDF"])
+        st.divider()
+
+        if conv_type == "PDF to Word":
+            conv_pdf = st.file_uploader("Upload PDF", type="pdf", key="p2w")
+            if st.button("Convert to Word", type="primary") and conv_pdf:
+                try:
+                    from pdf2docx import Converter
+                    import tempfile, os
+                    with st.spinner("Converting..."):
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+                            tmp_pdf.write(conv_pdf.read())
+                            pdf_path = tmp_pdf.name
+                        docx_path = pdf_path.replace(".pdf", ".docx")
+                        cv = Converter(pdf_path)
+                        cv.convert(docx_path)
+                        cv.close()
+                        with open(docx_path, "rb") as f:
+                            st.download_button("Download Word Doc", data=f, file_name="converted.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", type="primary")
+                        os.remove(pdf_path)
+                        os.remove(docx_path)
+                except ImportError:
+                    st.error("Add `pdf2docx` to requirements.txt.")
+
+        elif conv_type == "PDF to Excel":
+            excel_pdf = st.file_uploader("Upload PDF with Tables", type="pdf", key="p2e")
+            if st.button("Convert to Excel", type="primary") and excel_pdf:
+                try:
+                    import pdfplumber, pandas as pd
+                    with st.spinner("Extracting tables..."):
+                        with pdfplumber.open(excel_pdf) as pdf:
+                            all_tables = [pd.DataFrame(t[1:], columns=t[0]) for p in pdf.pages for t in p.extract_tables() if t]
+                            if all_tables:
+                                final_df = pd.concat(all_tables, ignore_index=True)
+                                buffer = io.BytesIO()
+                                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                                    final_df.to_excel(writer, index=False, sheet_name='Data')
+                                st.download_button("Download Excel File", data=buffer.getvalue(), file_name="tables.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary")
+                            else:
+                                st.warning("No tables found.")
+                except ImportError:
+                    st.error("Add `pdfplumber` and `openpyxl` to requirements.txt.")
+
+        elif conv_type == "PDF to JPG":
+            jpg_pdf = st.file_uploader("Upload PDF", type="pdf", key="p2j")
+            if st.button("Convert to JPG", type="primary") and jpg_pdf:
+                import zipfile
+                with st.spinner("Rendering JPGs..."):
+                    doc = fitz.open(stream=jpg_pdf.read(), filetype="pdf")
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                        for i, page in enumerate(doc):
+                            img_bytes = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0)).tobytes("jpeg")
+                            zip_file.writestr(f"page_{i+1}.jpg", img_bytes)
+                    st.download_button("Download ZIP", data=zip_buffer.getvalue(), file_name="images.zip", mime="application/zip", type="primary")
+
+        else:
+            st.info(f"**{conv_type}** requires deep structural rewriting. Ready for Cloud API integration in Phase 2.")
+            st.file_uploader("Upload File (API Not Connected)", disabled=True)
+
+    # ==========================================
     # FINAL ADVANCED TOOLS
     # ==========================================
     elif selected_tool == "Create PDF":
         st.subheader("📝 Create PDF from Scratch")
-        st.info("Type your content below to generate a brand new PDF document.")
         new_pdf_text = st.text_area("Enter Document Text", height=300)
-        
         if st.button("Generate PDF", type="primary") and new_pdf_text:
             doc = fitz.open()
             page = doc.new_page()
-            
-            # Simple text insertion with automatic word wrapping
-            rect = fitz.Rect(50, 50, page.rect.width - 50, page.rect.height - 50)
-            page.insert_textbox(rect, new_pdf_text, fontsize=12, fontname="helv", color=(0,0,0))
-            
-            st.success("PDF Created Successfully!")
-            st.download_button("Download New PDF", data=doc.write(), file_name="new_document.pdf", mime="application/pdf")
+            page.insert_textbox(fitz.Rect(50, 50, page.rect.width - 50, page.rect.height - 50), new_pdf_text, fontsize=12)
+            st.download_button("Download New PDF", data=doc.write(), file_name="new.pdf", mime="application/pdf")
 
     elif selected_tool == "Edit PDF":
-        st.subheader("🖍️ Edit PDF (Add Text/Annotations)")
-        st.info("Since PDFs are flattened, you cannot easily delete existing text, but you can overlay new text anywhere on the page!")
-        edit_pdf = st.file_uploader("Upload PDF to Edit", type="pdf")
-        
+        st.subheader("🖍️ Edit PDF (Overlay Text)")
+        edit_pdf = st.file_uploader("Upload PDF", type="pdf")
         edit_page = st.number_input("Page Number", min_value=1, value=1)
-        edit_text = st.text_input("Text to Add", value="APPROVED")
-        
+        edit_text = st.text_input("Text to Add")
         c1, c2 = st.columns(2)
-        x_pos = c1.number_input("X Position (Left to Right)", value=100)
-        y_pos = c2.number_input("Y Position (Top to Bottom)", value=100)
-        
+        x_pos, y_pos = c1.number_input("X Position", value=100), c2.number_input("Y Position", value=100)
         if st.button("Apply Text", type="primary") and edit_pdf and edit_text:
             doc = fitz.open(stream=edit_pdf.read(), filetype="pdf")
             if 1 <= edit_page <= len(doc):
-                page = doc[edit_page - 1]
-                page.insert_text((x_pos, y_pos), edit_text, fontsize=18, color=(1, 0, 0)) # Red text by default
-                
-                st.success("Text added successfully!")
+                doc[edit_page - 1].insert_text((x_pos, y_pos), edit_text, fontsize=18, color=(1, 0, 0))
                 st.download_button("Download Edited PDF", data=doc.write(), file_name="edited.pdf", mime="application/pdf")
-            else:
-                st.error("Invalid page number.")
 
     elif selected_tool == "PDF Overlay":
         st.subheader("🥪 PDF Overlay (Merge Layers)")
-        st.info("Stamps one PDF directly on top of another. Great for applying letterheads or complex watermarks.")
-        base_pdf = st.file_uploader("Upload Base PDF (Bottom Layer)", type="pdf", key="base")
-        top_pdf = st.file_uploader("Upload Overlay PDF (Top Layer)", type="pdf", key="top")
-        
+        base_pdf, top_pdf = st.file_uploader("Base Layer", type="pdf", key="base"), st.file_uploader("Top Layer", type="pdf", key="top")
         if st.button("Overlay PDFs", type="primary") and base_pdf and top_pdf:
             doc_base = fitz.open(stream=base_pdf.read(), filetype="pdf")
             doc_top = fitz.open(stream=top_pdf.read(), filetype="pdf")
-            
-            # Overlay page by page up to the shortest document's length
-            pages_to_process = min(len(doc_base), len(doc_top))
-            
-            for i in range(pages_to_process):
-                # show_pdf_page places the top document over the base document
+            for i in range(min(len(doc_base), len(doc_top))):
                 doc_base[i].show_pdf_page(doc_base[i].rect, doc_top, i)
-                
-            st.success("PDFs Overlayed Successfully!")
             st.download_button("Download Overlayed PDF", data=doc_base.write(), file_name="overlayed.pdf", mime="application/pdf")
 
     elif selected_tool == "Compare PDFs":
         st.subheader("⚖️ Compare PDFs (Text Diff)")
-        st.info("Finds the text differences between two documents.")
-        comp_pdf1 = st.file_uploader("Upload Original PDF", type="pdf", key="comp1")
-        comp_pdf2 = st.file_uploader("Upload Modified PDF", type="pdf", key="comp2")
-        
-        if st.button("Compare Text", type="primary") and comp_pdf1 and comp_pdf2:
+        comp_pdf1, comp_pdf2 = st.file_uploader("Original", type="pdf", key="c1"), st.file_uploader("Modified", type="pdf", key="c2")
+        if st.button("Compare", type="primary") and comp_pdf1 and comp_pdf2:
             import difflib
-            doc1 = fitz.open(stream=comp_pdf1.read(), filetype="pdf")
-            doc2 = fitz.open(stream=comp_pdf2.read(), filetype="pdf")
-            
-            text1 = "\n".join([page.get_text() for page in doc1]).splitlines()
-            text2 = "\n".join([page.get_text() for page in doc2]).splitlines()
-            
-            diff = list(difflib.unified_diff(text1, text2, lineterm=""))
-            
-            if not diff:
-                st.success("The text in both PDFs is identical!")
-            else:
-                st.warning("Differences found:")
-                diff_text = "\n".join(diff[:100]) # Limit to first 100 lines to prevent crashing on massive diffs
-                st.code(diff_text, language="diff")
+            t1 = "\n".join([p.get_text() for p in fitz.open(stream=comp_pdf1.read(), filetype="pdf")]).splitlines()
+            t2 = "\n".join([p.get_text() for p in fitz.open(stream=comp_pdf2.read(), filetype="pdf")]).splitlines()
+            diff = list(difflib.unified_diff(t1, t2, lineterm=""))
+            if not diff: st.success("Identical!")
+            else: st.code("\n".join(diff[:100]), language="diff")
 
     elif selected_tool == "Webpage to PDF":
         st.subheader("🌐 Webpage to PDF")
-        st.info("Note: This tool requires the 'wkhtmltopdf' software installed on your server.")
-        url_input = st.text_input("Enter Website URL", placeholder="https://www.google.com")
-        
+        url_input = st.text_input("Enter URL", placeholder="https://www.google.com")
         if st.button("Convert to PDF", type="primary") and url_input:
             try:
                 import pdfkit
-                with st.spinner("Fetching webpage and rendering PDF..."):
-                    try:
-                        # options to ignore load errors for modern websites with heavy JS
-                        options = {'quiet': ''} 
-                        pdf_bytes = pdfkit.from_url(url_input, False, options=options)
-                        st.success("Webpage converted successfully!")
-                        st.download_button("Download Web PDF", data=pdf_bytes, file_name="webpage.pdf", mime="application/pdf")
-                    except OSError:
-                        st.error("System Error: 'wkhtmltopdf' is not installed on this server. This library is required for URL conversions.")
+                with st.spinner("Rendering..."):
+                    pdf_bytes = pdfkit.from_url(url_input, False, options={'quiet': ''})
+                    st.download_button("Download PDF", data=pdf_bytes, file_name="webpage.pdf", mime="application/pdf")
             except ImportError:
-                st.error("Python library 'pdfkit' is missing. Please add it to requirements.txt.")
+                st.error("Add `pdfkit` to requirements.txt.")
+            except OSError:
+                st.error("System Error: 'wkhtmltopdf' not installed on server.")
     else:
         st.subheader(selected_tool)
         st.info(f"The logic for **{selected_tool}** is highly complex and requires additional system-level libraries (like `pdf2docx`, `wkhtmltopdf`, or Digital Signature cryptography). We will build this in the next phase!")
