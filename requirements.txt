@@ -50,3 +50,17 @@ streamlit-cropper
 streamlit-drawable-canvas
 numpy
 pandas
+streamlit
+google-generativeai
+PyMuPDF
+Pillow
+rembg
+pytesseract
+qrcode
+streamlit-cropper
+streamlit-drawable-canvas
+numpy
+pandas
+pdf2docx
+pdfplumber
+openpyxl
