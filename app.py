@@ -402,6 +402,115 @@ elif page == "📄 PDF":
     # ==========================================
     # SIGN, OCR, AND CONVERT TOOLS
     # ==========================================
+elif selected_tool == "PDF Convert":
+        st.subheader("🔄 Advanced PDF Converter")
+        st.info("Convert your documents seamlessly between formats.")
+        
+        # Sub-menu for the different conversion types
+        conv_type = st.selectbox("Select Conversion Type", [
+            "PDF to Word", 
+            "PDF to Excel", 
+            "PDF to JPG", 
+            "PDF to Powerpoint", 
+            "PDF to PDF/A", 
+            "eBooks to PDF", 
+            "iWork to PDF"
+        ])
+        
+        st.divider()
+
+        # 1. PDF TO WORD
+        if conv_type == "PDF to Word":
+            conv_pdf = st.file_uploader("Upload PDF to convert to Word", type="pdf", key="pdf2word")
+            if st.button("Convert to Word", type="primary") and conv_pdf:
+                try:
+                    from pdf2docx import Converter
+                    import tempfile
+                    import os
+
+                    with st.spinner("Converting to Word... This might take a minute."):
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+                            tmp_pdf.write(conv_pdf.read())
+                            pdf_path = tmp_pdf.name
+
+                        docx_path = pdf_path.replace(".pdf", ".docx")
+                        cv = Converter(pdf_path)
+                        cv.convert(docx_path)
+                        cv.close()
+
+                        with open(docx_path, "rb") as f:
+                            st.download_button("⬇️ Download Word Document", data=f, file_name="converted.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", type="primary")
+
+                        os.remove(pdf_path)
+                        os.remove(docx_path)
+                except ImportError:
+                    st.error("Please add `pdf2docx` to your requirements.txt file.")
+
+        # 2. PDF TO EXCEL
+        elif conv_type == "PDF to Excel":
+            st.caption("Note: This extracts visible tables from the PDF into an Excel spreadsheet.")
+            excel_pdf = st.file_uploader("Upload PDF with Tables", type="pdf", key="pdf2excel")
+            if st.button("Convert to Excel", type="primary") and excel_pdf:
+                try:
+                    import pdfplumber
+                    import pandas as pd
+                    import io
+
+                    with st.spinner("Extracting tables to Excel..."):
+                        with pdfplumber.open(excel_pdf) as pdf:
+                            all_tables = []
+                            for page in pdf.pages:
+                                tables = page.extract_tables()
+                                for table in tables:
+                                    df = pd.DataFrame(table[1:], columns=table[0])
+                                    all_tables.append(df)
+                            
+                            if all_tables:
+                                # Combine all extracted tables into one sheet for simplicity
+                                final_df = pd.concat(all_tables, ignore_index=True)
+                                
+                                buffer = io.BytesIO()
+                                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                                    final_df.to_excel(writer, index=False, sheet_name='Extracted Data')
+                                
+                                st.download_button("⬇️ Download Excel File", data=buffer.getvalue(), file_name="extracted_tables.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary")
+                            else:
+                                st.warning("No tabular data found in this PDF.")
+                except ImportError:
+                    st.error("Please add `pdfplumber` and `openpyxl` to requirements.txt.")
+
+        # 3. PDF TO JPG
+        elif conv_type == "PDF to JPG":
+            jpg_pdf = st.file_uploader("Upload PDF to convert to JPGs", type="pdf", key="pdf2jpg")
+            if st.button("Convert to JPG", type="primary") and jpg_pdf:
+                import fitz
+                import zipfile
+                import io
+                
+                with st.spinner("Rendering pages to high-quality JPGs..."):
+                    doc = fitz.open(stream=jpg_pdf.read(), filetype="pdf")
+                    zip_buffer = io.BytesIO()
+                    
+                    # Package all images into a ZIP file for easy downloading
+                    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                        for i, page in enumerate(doc):
+                            pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))
+                            img_bytes = pix.tobytes("jpeg")
+                            zip_file.writestr(f"page_{i+1}.jpg", img_bytes)
+                            
+                    st.download_button("⬇️ Download JPGs (ZIP file)", data=zip_buffer.getvalue(), file_name="converted_images.zip", mime="application/zip", type="primary")
+
+        # 4. COMPLEX FORMATS (Placeholders for Cloud API Integration)
+        elif conv_type in ["PDF to Powerpoint", "PDF to PDF/A"]:
+            st.warning(f"**{conv_type}** requires deep structural file rewriting.")
+            st.info("To implement this in Python, you will need to integrate a cloud service API like **CloudConvert** or **Zamzar**, or install deep system libraries like Ghostscript (for PDF/A). This UI is ready for your API keys in Phase 2!")
+            st.file_uploader("Upload File (API Not Connected)", disabled=True)
+
+        elif conv_type in ["eBooks to PDF", "iWork to PDF"]:
+            st.warning(f"**{conv_type}** deals with proprietary or highly complex reflowable formats.")
+            st.info("Formats like EPUB, MOBI, Pages, and Keynote cannot be perfectly converted using pure offline Python without breaking the formatting. This interface is built and ready for a third-party conversion API integration!")
+            st.file_uploader("Upload File (API Not Connected)", disabled=True)
+    
     elif selected_tool == "Sign PDF":
         st.subheader("✒️ Sign PDF (Overlay Signature)")
         sign_pdf = st.file_uploader("Upload PDF to Sign", type="pdf", key="sign_pdf")
